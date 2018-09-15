@@ -1,35 +1,61 @@
 
-
 #from random import *
 import random
 from graphics import *
 import matplotlib
+import numpy
 import time
 import math
 
 class Neuron(object):
 
     """ Class Invariant: 
-    (float) threshold: threshold voltage of the neuron; default initialized to 1
-    (float) voltage: current voltage of the neuron; default initialized to 0
-    ([(Synapse)]) postSynapses: list of synapses to which the neuron is sending output
-    ([(Synapse)]) preSynapses: list of synapses to which the neuron is receiving input
-    (float) sumInputs: sum of Inputs before leaking
-    (float) decayConstant: variable that determines the rate of leakiness
-    (int) lastTau: last time this neuron was checked by simulation in terms of tau
-    (Simulator) simulator: the corresponding simulator that uses this neuron
-    (boolean) toBeChecked: True if the simulator check list comtains self; else false;
-        removes the necessity to use inneficient contains()
-    (int) refractory: is the set refractory period of the neuron in tau; default initialized to 1; Greater than zero.
-    (int) refractCount: is the refractory time left since this neuron last fired. Must be between
-    		0 and refractory, inclusive.
+    (float) "threshold": threshold voltage of the neuron; default initialized 
+        to 1.
+    (float) "voltage": current voltage of the neuron; default initialized to 0.
+    ([(Synapse)]) "postSynapses": list of synapses to which the neuron is 
+        sending output.
+    ([(Synapse)]) "preSynapses": list of synapses to which the neuron is 
+        receiving input.
+    (float) "sumInputs": sum of inputs at a  time step before leaking.
+    (int) "lastTau": last time this neuron was checked by simulation in terms 
+        of tau.
+    (Simulator) "simulator": the corresponding simulator that uses this neuron.
+    (boolean) "toBeChecked": True if the "neuronCheckList" in Simulator comtains 
+        self; else false; removes the necessity to use inneficient contains().
+    (int) "refractory": is the set refractory period of the neuron in tau; 
+        default initialized to 1; Greater than zero.
+    (int) "refractCount": is the refractory time left since this neuron last 
+        fired. Must be between 0 and "refractory", inclusive.
     """
     
     def __init__(self, sim, v= 0, theta= 1, refractory= 1): 
         """ Precondition:
-            (Simulator) sim: instance of Simulator class
-            (float) v: must be a float
-            (float) theta: must be a float
+            (Simulator) "sim": an instance of Simulator that uses this neuron.
+            (float) "v": initial voltage; by default, "v" is initialized to 0.
+            (float) "theta": this neuron's threshold; by default, "theta" is 
+                initialized to 1.
+            (int) "refractory": how many time steps the neuron is inactive for;
+                by default, "refractory" is initialized to 1.
+            
+            1) "simulator," "voltage," "threshold," and "refractory" is 
+                initialized by parameters. A variable called "refractCount" is 
+                initialized to 0, which has "refractory" amount of time steps 
+                before this neuron can fire again. Moreover, if the threshold 
+                is initialized to be less than the initial voltage, then the 
+                neuron is added to the "neuronCheckList" in Simulator.
+            
+            2) Also, each neuron holds two lists, "postSynapses" and 
+                "preSynapses," which store instances of Synapse, representing 
+                the synapses on the axon and dendrites of this neuron.
+            
+            3) Each neuron holds a boolean value called "toBeChecked", which is 
+                changed to True when appended onto the "neuronCheckList" in 
+                Simulator.
+            
+            4) Each neuron has instances of monitors, "voltageMonitor" and
+                "spikeMonitor"; the former tracks the voltage over time, and 
+                the latter tracks the spikes over time.
         """
         self.threshold= theta
         self.voltage= v
@@ -48,58 +74,60 @@ class Neuron(object):
         self.voltageMonitor= VoltageMonitor(self)
         self.spikeMonitor= SpikeMonitor(self)
         self.voltageMonitor.appendCritical(0, v)
-            
-    def copyNeuron(self, neuron):
-        self.threshold= neuron.threshold
-        self.voltage= neuron.voltage
-        self.postSynapses= neuron.postSynapses[:]
-        self.preSynapses= neuron.preSynapses[:]
-        self.refractory= neuron.refractory
-        self.lastTau= neuron.lastTau
-        self.refractCount= neuron.refractCount
-        if(self.voltage>= self.threshold):
-            self.simulator.neuronCheckList.append(self)
-            self.toBeChecked=True
-
-
-
-
-    def getOutput(self):
-        """ returns boolean value for neuron firing """
-        if self.voltage>= self.threshold:
-            return True
-        else:
-            return False
         
     def getPreSynapses(self):
-        """ returns preSynapses"""
+        """ Returns "preSynapses".
+        """
         return self.preSynapses
     
     def getPostSynapses(self):
-        """ returns postSynapses """
+        """ Returns "postSynapses".
+        """
         return self.postSynapses
+            
+    def getThreshold(self):
+        """ Return "threshold". 
+        """
+        return self.threshold
+    
+    def getNeuronList(self):
+        """ Return an array whose only element is this neuron.
+        """
+        temp= []
+        temp.append(self)
+        return temp
+        
+    def getNextVoltage(self, v):
+        """ Precondition: 
+            (float) "v": a voltage at a certain time step
+            Returns the voltage of neuron at the next time step.
+        """
+    		return v
     
     def setVoltage(self,v):
         """ Precondition: 
-        			v: must be a float
-            sets voltage to v
+            (float) "v": desired voltage of the neuron.
+            Sets voltage to "v".
         """
         self.voltage= v
     
     def Group(self, N= 1):
+        """ Precondition: 
+            (int) "N": the number of neurons desired in the new NeuronGroup; by 
+                default, "N" is initialized to 1.
+            Returns an instance of NeuronGroup with "N" number of neurons.
+            
+        
+        """
         self.simulator.deconstruct(self)
         temp= NeuronGroup(self, N)
-        return temp.getNeuronList()
-        
-    def getThreshold(self):
-        """ return threshold """
-        return self.threshold
-        
+        return temp
+    
     def addVoltage(self, v):
         """ Precondition:
-        			v: must be a float
-        adds v to sumInputs
-        if this neuron is not in simulator neuronCheckList, adds it to that list
+            (float) "v": adds "v" to sumInputs.
+            If this neuron is not in simulator "neuronCheckList", adds it to 
+                 that list.
         """
         self.sumInputs += v
         if(not self.toBeChecked):
@@ -108,7 +136,8 @@ class Neuron(object):
     
     def setThreshold(self, theta):
         """ Precondition:
-        			theta: must be a float 
+            (float) "theta": desired threshold of the neuron 
+            Set 
         """
         self.threshold= theta
     
@@ -143,14 +172,27 @@ class Neuron(object):
         self.lastTau= currentTau
         return False
     
-    def getNeuronList(self):
-        temp= []
-        temp.append(self)
-        return temp
-        
-    def getNextVoltage(self,v):
-    		return v
-        
+     def copyNeuron(self, neuron):
+        """ Precondition:
+            (Neuron) "neuron": instance of Neuron
+            
+            1) Updates this instance of the Neuron to be identical to the 
+                neuron passed in as a parameter
+            2) If the parameter "neuron" is ready to fire an action potential, 
+            this neuron will too be prepared to fire an action potential.
+        """
+        self.threshold= neuron.threshold
+        self.voltage= neuron.voltage
+        self.postSynapses= neuron.postSynapses[:]
+        self.preSynapses= neuron.preSynapses[:]
+        self.refractory= neuron.refractory
+        self.lastTau= neuron.lastTau
+        self.refractCount= neuron.refractCount
+        if(self.voltage>= self.threshold):
+            self.simulator.neuronCheckList.append(self)
+            self.toBeChecked=True
+    
+    
     def plotVoltage(self):
         self.voltageMonitor.plot()
         
@@ -163,14 +205,14 @@ class LIFNeuron(Neuron):
     (float) decayConstant: variable that determines the rate of leakiness
     """
     
-    def __init__(self, sim, v= 0, theta= 1, d= 5): 
+    def __init__(self, sim, v= 0, theta= 1, refractory= 1, d= 5): 
         """ Precondition:
         (Simulator) sim: instance of Simulator class
         (float) v: must be a float
         (float) theta: must be a float
         (float) d: real number greater than or equal to one.
         """
-        super().__init__(sim, v, theta)
+        super().__init__(sim, v, theta, refractory)
         self.decayConstant= d
         
     def leak(self, currentTau):
@@ -191,19 +233,23 @@ class LIFNeuron(Neuron):
     def getNextVoltage(self,v):
         return v*((1-(1/self.decayConstant)))
 
+    def copyNeuron(self, neuron):
+        super().copyNeuron(neuron)
+        self.decayConstant= neuron.decayConstant
+
 class MCPNeuron(LIFNeuron): 
     """ Class Invariant:
     Inherits Neuron
     Essentially the same as a normal neuron as a MCP is a the most basic All-Or-Nothing neuron
     """
     
-    def __init__(self, sim, v= 0, theta= 1):
+    def __init__(self, sim, v= 0, theta= 1, refractory=1):
         """ Precondition:
         (Simulator) sim: instance of Simulator class
         (float) v: must be a float
         (float) theta: must be a float
         """
-        super().__init__(sim, v, theta, d= 1)
+        super().__init__(sim, v, theta, refractory, d= 1)
 
             
 class Synapse(object):
@@ -279,6 +325,23 @@ class Synapse(object):
             self.fire()
             self.checkHelper()
             
+    @classmethod
+    def connect(cls, sim, A, B, weight=1, d=1):
+        l1=A.getNeuronList()
+        l2=B.getNeuronList()
+        for i in l1:
+            for j in l2:
+                cls(sim,i,j,weight,d) 
+    
+    @classmethod        
+    def randomConnect(cls, sim, A, B, weight=1, d=1, probability=0.5):
+        l1=A.getNeuronList()
+        l2=B.getNeuronList()
+        for i in l1:
+            for j in l2:
+                if(random.random()<probability):
+                    cls(sim,i,j,weight,d) 
+        
             
 class Simulator(object):
     """ Class invariant:
@@ -286,7 +349,6 @@ class Simulator(object):
         ([(Neuron)]) neuronCheckList: list of neurons to be checked in the next tau
         (float) tau: minimum timestep. All time is in unit tau
         (int) finalTau: the last time (in tau) we care about
-        
         ([([(int)][(Neuron)][(float)])]) masterInput: 2 dimensional array 3*n that 
         		stores info about when to stimulate which neuron with what voltage
         (int) pointer: points to where in masterInput Simulator is.
@@ -346,12 +408,15 @@ class Simulator(object):
 
 
     def construct(self,ob):
+        """does nothing, to be overriden"""
         pass
     
     def deconstruct(self,ob):
+        """does nothing, to be overriden"""
         pass
     
     def synConstruct(self,ob):
+        """does nothing, to be overriden"""
         pass
 
     def main(self):
@@ -363,6 +428,7 @@ class Simulator(object):
                len(self.synapseCheckList)==0 and \
                len(self.neuronCheckList)==0 and \
                self.pointer== len(self.masterInput[0])):
+                self.finalTau=currentTau+5
                 break
         
     def runNotification(self,currentTau):
@@ -382,8 +448,34 @@ class Simulator(object):
         for neuronToCheck in tempNCL:
             neuronToCheck.check(currentTau)
             
+    def getFinalTau(self):
+        """returns the final Tau"""
+        return self.finalTau
+    
 class GraphicSimulator(Simulator):
-    def __init__(self, t= 1, finalT=10000000,l=1000, h=100):
+    """Class Invariants:
+        Inherits Simulator
+        ([(Neuron/NeuronGroup)]) constructList: List of the neurons or neuron 
+            groups to be drawn. 
+        ([([(Neuron)][(graphics.Circle)])]) storageList: List of the drawn neurons,
+            and the Circle objects that represent them
+        ([([(Synapse)][(graphics.Point)][(graphics.Point)])]) synapseConstList:
+            List of drawn Synapses, and the points that are the locations of the
+            Neurons that connect them
+        (int) l: length of the graphics window
+        (int) h: Height of the graphics window
+        (graphics.graphWin) win: the graphics window displayed
+        (String) locType: way to arrange points
+
+    """
+    def __init__(self, t= 1, finalT=10000000,l=1000, h=100, locType=""):
+        """Preconditions:
+            (float) t: a positve float
+            (int) finalT: a nonnegative int
+            (int) l: a positive int
+            (int) h: a positive int
+            (String) locType
+        """
         self.constructList=[]
         self.h=h
         self.l=l
@@ -394,19 +486,37 @@ class GraphicSimulator(Simulator):
         self.synapseConstList.append([])
         self.synapseConstList.append([])
         self.synapseConstList.append([])
+        self.locType=locType
         super().__init__(t,finalT)
         
     def construct(self,ob):
+        """Precondition: 
+            (Neuron/NeuronGroup) ob
+            Adds ob to the constructList
+        """
         self.constructList.append(ob)
         
     def deconstruct(self,ob):
+        """Precondition: 
+            (Neuron/NeuronGroup) ob
+            removes ob from the constructList
+        """
         self.constructList.remove(ob)
         
     def synConstruct(self,ob):
+        """Precondition: 
+            (Synapse) ob
+            Adds ob to synapseConstructList[0]
+        """
         self.synapseConstList[0].append(ob)
 
         
     def makeG(self):
+        """Builds graphical representations of all the neurons/NeuronGroups (Circle) 
+        and synapses (Line) in constructList and synapseConstructList[0], stores 
+        them in storage List and synapseConstructList[1:2] and displays them 
+        on the GraphWin win
+        """
         count=0
         self.win=GraphWin("Neurons",self.l,self.h*3,autoflush=False)
 
@@ -439,6 +549,11 @@ class GraphicSimulator(Simulator):
         self.win.update()
         
     def build(self, ob, pt):
+        """Preconditions:
+            (Neuron) ob
+            (graphics.Point) pt
+            Appends ob and its respective circle to storageList
+        """
         self.storageList[0].append(ob)
         circ=Circle(self.assignLoc(pt),5)
         self.storageList[1].append(circ)
@@ -453,14 +568,15 @@ class GraphicSimulator(Simulator):
                len(self.synapseCheckList)==0 and \
                len(self.neuronCheckList)==0 and \
                self.pointer== len(self.masterInput[0])):
+                self.finalTau=currentTau+5
                 break
             time.sleep(self.tau)
-        #self.win.promptClose(win.getWidth()/2, 20)
-
+        
         
     def runNotification(self,currentTau):
         """ inputs user data at currentTau and checks all the synapses 
-        and neurons that are to be checked """
+        and neurons that are to be checked 
+        Colors firing Neurons red in win"""
         while(self.pointer<len(self.masterInput[0]) and\
               currentTau==self.masterInput[0][self.pointer]):
             self.masterInput[1][self.pointer].\
@@ -483,8 +599,20 @@ class GraphicSimulator(Simulator):
         self.win.update()
 
             
-    def assignLoc(self,x,locType=""):
-        y=-1*self.h*math.cos(x)+self.h
+    def assignLoc(self,x):   #TODO (add options)
+        """ Precondition
+            (int) x: a nonnegative integer
+            returns the desired coordinate point of an object, based on locType
+        """
+        if(self.locType=="linearRandom"):
+            y=self.h*random.random()
+        elif(self.locType=="random"):
+            x=self.l*random.random()/12
+            y=self.h*random.random()/1.2
+        else:
+            y=-1*self.h*math.cos(x)+self.h
+
+            
         return Point(x*10+20,y+20)
         
         
@@ -512,24 +640,44 @@ class NeuronGroup(object):
     
             
 class Monitor(object):
+    """Class Invariants
+        ([]) critical: List to store important information
+        (Neuron) neuron: neuron which contains this monitor
+    """
     def __init__(self, neuron):
+        """Precondition
+            (Neuron) neuron
+        """
         self.critical= []
         self.neuron= neuron
 
 class VoltageMonitor(Monitor):
+    """Class Invariants:
+        Inherits Monitor
+        ([([(int)][(float)])]) critical: List of times and voltages at critical
+            points
+        ([(float)]) master: voltages for all times
+    """
     def __init__(self, neuron):
         super().__init__(neuron)
         self.critical.append([])
         self.critical.append([])
     
     def appendCritical(self, time, voltage):
-        self.critical[1].append(voltage)
+        """Precondition:
+            (int) time: positive integer
+            (float) voltage
+            appends time and voltage to critical
+        """
         self.critical[0].append(time)
+        self.critical[1].append(voltage)
+
     
     def getAllVoltages(self):
+        """ builds and returns master, which is a list of voltages for all times"""
         self.master= []
         self.master.append(self.critical[1][0])
-        for i in range(1,self.critical[0][len(self.critical[0])-1]):		
+        for i in range(1,self.neuron.simulator.getFinalTau()):		
             if(i not in self.critical[0]):
                 self.master.append(self.neuron.getNextVoltage(self.master[i-1]))
             else:
@@ -538,6 +686,7 @@ class VoltageMonitor(Monitor):
         
         
     def plot(self):
+        """ using matplotlib.pyplot.plot, plots voltage verses time graph"""
         self.getAllVoltages()
         matplotlib.pyplot.plot(self.master)
         matplotlib.pyplot.show()
@@ -545,15 +694,25 @@ class VoltageMonitor(Monitor):
     		
     
 class SpikeMonitor(Monitor):
+    """Class Invariants:
+        Inherits Monitor
+        ([(int)]) critical: List of times neuron fires
+        ([(float)]) master: spikes at all times
+    """
     def __init__(self, neuron):
     		super().__init__(neuron)
     
     def appendCritical(self, time):
-    		self.critical.append(time)
+        """Percondition
+            (int) time: nonnegative int
+            appends time to critical
+        """
+        self.critical.append(time)
     
     def getAllSpikes(self):
+        """builds and returns master, which is a list of the spikes at all time"""
         self.master= []
-        for i in range(self.critical[len(self.critical)-1]+5): 
+        for i in range(self.neuron.simulator.getFinalTau()): 
             if(i in self.critical):
                 self.master.append(1)
             else:
@@ -561,8 +720,12 @@ class SpikeMonitor(Monitor):
         return self.master
                 
     def plot (self):
+        """ using matplotlib.pyplot.plot, plots spikes verses time graph"""
         self.getAllSpikes()
-        matplotlib.pyplot.plot(self.master)
+        #matplotlib.pyplot.plot(self.master)
+        b=numpy.ones_like(self.master)
+        matplotlib.pyplot.plot(b)
+        matplotlib.pyplot.eventplot(self.critical)
         matplotlib.pyplot.show()
         
 # =============================================================================
@@ -578,10 +741,10 @@ class SpikeMonitor(Monitor):
 # 
 # =============================================================================
 
-sim= GraphicSimulator(t=0.3,finalT=100)
+sim= GraphicSimulator(t=0.2,finalT=100)
 
-NL1=Neuron(sim)
-NL2=Neuron(sim)
+NL1=MCPNeuron(sim)
+NL2=MCPNeuron(sim)
 NM1= MCPNeuron(sim, theta=0.5)
 NM2= MCPNeuron(sim, theta=-1.5)
 NR= MCPNeuron(sim, theta=1.5)
@@ -599,19 +762,23 @@ sim.appendInput(5,NL2,1)
 sim.appendInput(10,NL1,0)
 sim.appendInput(10,NL2,1)
 
-sim.appendInput(20,NL1,1)
-sim.appendInput(20,NL2,1)
+sim.appendInput(40,NL1,1)
+sim.appendInput(40,NL2,1)
 
 sim.appendInput(70,NL1,0)
 sim.appendInput(70,NL2,1)
-D=LIFNeuron(sim)
-Synapse(sim,NR,D,3.5)
-Synapse(sim,NM1,D)
+D=LIFNeuron(sim,refractory=1)
+Synapse(sim,NR,D,30)
+Synapse(sim,NM1,D,1.5)
 
-E=Neuron(sim).Group(1000)
+E=LIFNeuron(sim, d=10).Group(100)
+Synapse.connect(sim, NR, E)
+Synapse(sim, D , E.getNeuronList()[99], 4.5)
 sim.main()
 
-D.plotVoltage()
+E.getNeuronList()[99].plotVoltage()
+E.getNeuronList()[99].plotSpikes()
+
 D.plotSpikes()
 
 
