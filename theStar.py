@@ -21,9 +21,9 @@ class Paint(object):
         self.choose_size_button = Scale(self.root, from_=1, to=10, orient=HORIZONTAL)
         self.choose_size_button.grid(row=0, column=4)
 
-        self.c = Canvas(self.root, bg='white', width=600, height=600)
+        self.c = Canvas(self.root, bg='white', width=1000, height=900)
         self.c.grid(row=1, columnspan=5)
-
+    
         self.setup()
         self.root.mainloop()
 
@@ -74,7 +74,7 @@ class Paint(object):
     def buildNeuron(self,event):
         self.line_width = self.choose_size_button.get()
         currentColor =  self.color
-        radius=self.line_width*10
+        radius=self.line_width*5
         centerX= event.x
         centerY= event.y
         if self.wouldIntersect(centerX,centerY,radius)==False:
@@ -155,10 +155,10 @@ class EmbeddedNeuron(EmbeddedCanvas):
         self.centerX=centerX
         self.centerY=centerY
         self.radius=radius
-        self.topLeftX=centerX-(radius/(2.0**0.5))
-        self.topLeftY=centerY-(radius/(2.0**0.5))
-        self.bottomRightX=centerX+(radius/(2.0**0.5))
-        self.bottomRightY=centerY+(radius/(2.0**0.5))
+        self.topLeftX=centerX-(radius)
+        self.topLeftY=centerY-(radius)
+        self.bottomRightX=centerX+(radius)
+        self.bottomRightY=centerY+(radius)
         self.mainColor=color
         
         self.shape=c.create_oval(self.topLeftX,self.topLeftY,self.bottomRightX,self.bottomRightY, outline=self.mainColor, fill=self.mainColor, width=2)
@@ -171,16 +171,16 @@ class EmbeddedNeuron(EmbeddedCanvas):
         return (x-self.centerX)**2 + (y-self.centerY)**2 < self.radius**2
     
     def checkIntersect(self,x,y,r):
-        return (x-self.centerX)**2 + (y-self.centerY)**2 < (self.radius+r)**2
+        return (x-self.centerX)**2 + (y-self.centerY)**2 < (self.radius+r+2)**2
     
     def redraw(self, centerX, centerY):
         self.undraw()
         self.centerX=centerX
         self.centerY=centerY
-        self.topLeftX=centerX-(self.radius/(2.0**0.5))
-        self.topLeftY=centerY-(self.radius/(2.0**0.5))
-        self.bottomRightX=centerX+(self.radius/(2.0**0.5))
-        self.bottomRightY=centerY+(self.radius/(2.0**0.5))
+        self.topLeftX=centerX-(self.radius)
+        self.topLeftY=centerY-(self.radius)
+        self.bottomRightX=centerX+(self.radius)
+        self.bottomRightY=centerY+(self.radius)
         
         self.shape=self.canvas.create_oval(self.topLeftX,self.topLeftY,\
                                            self.bottomRightX,self.bottomRightY, outline=self.mainColor, fill=self.mainColor, width=2)
@@ -193,22 +193,21 @@ class EmbeddedNeuron(EmbeddedCanvas):
         self.canvas.delete(self.shape)
         
 class EmbeddedSynapse(EmbeddedCanvas):
+    END_CIRCLE_RADIUS=3
+    SYNAPTIC_CLEFT_DISTANCE=2
     def __init__(self, c, NFrom, NTo=None, s=None):
         self.canvas=c
         self.NFrom=NFrom
         self.NTo=NTo
         self.shape=None
+        self.shapeBulb=None
         self.synapse=s
         
+        #(2.0**0.5)
     def setNToAndDraw(self, NTo):
         self.undraw()
         self.NTo=NTo
-        if isinstance(self.synapse, Neuron.Synapse):
-            lineWdt= min(self.synapse.weight, self.NFrom.radius*2)
-        else:
-            lineWdt= 2
-        self.shape=self.canvas.create_line(self.NFrom.centerX, self.NFrom.centerY, self.NTo.centerX, self.NTo.centerY,\
-                                           fill=self.NFrom.mainColor, width=lineWdt)
+        self.redraw()
         if isinstance(self.NFrom, EmbeddedNeuron) and self not in self.NFrom.synapsesOut:
             self.NFrom.synapsesOut.append(self)
         if isinstance(self.NFrom, EmbeddedNeuron) and self not in self.NTo.synapsesIn:
@@ -220,8 +219,20 @@ class EmbeddedSynapse(EmbeddedCanvas):
             lineWdt= min(self.synapse.weight, self.NFrom.radius*2)
         else:
             lineWdt= 2
-        self.shape=self.canvas.create_line(self.NFrom.centerX, self.NFrom.centerY, self.NTo.centerX, self.NTo.centerY,\
+        endCircleRadius=EmbeddedSynapse.END_CIRCLE_RADIUS*lineWdt
+        delD=endCircleRadius+EmbeddedSynapse.SYNAPTIC_CLEFT_DISTANCE+self.NTo.radius
+        bigD=((self.NFrom.centerX-self.NTo.centerX)**2 + (self.NFrom.centerY-self.NTo.centerY)**2)**0.5
+        newEndX=int((((bigD-delD)*self.NTo.centerX) + (delD*self.NFrom.centerX))/bigD)
+        newEndY=int((((bigD-delD)*self.NTo.centerY) + (delD*self.NFrom.centerY))/bigD)
+        self.shape=self.canvas.create_line(self.NFrom.centerX, self.NFrom.centerY, newEndX, newEndY,\
                                            fill=self.NFrom.mainColor, width=lineWdt)
+        
+        topLeftX=newEndX-(EmbeddedSynapse.END_CIRCLE_RADIUS)
+        topLeftY=newEndY-(EmbeddedSynapse.END_CIRCLE_RADIUS)
+        bottomRightX=newEndX+(EmbeddedSynapse.END_CIRCLE_RADIUS)
+        bottomRightY=newEndY+(EmbeddedSynapse.END_CIRCLE_RADIUS)
+        self.shapeBulb=self.canvas.create_oval(topLeftX,topLeftY,\
+                                           bottomRightX,bottomRightY, outline=self.NFrom.mainColor, fill=self.NFrom.mainColor, width=1)
         
     def drawTemp(self, x, y):
         self.undraw()
@@ -235,6 +246,8 @@ class EmbeddedSynapse(EmbeddedCanvas):
     def undraw(self):
         if self.shape!=None:
             self.canvas.delete(self.shape)
+        if self.shapeBulb!=None:
+            self.canvas.delete(self.shapeBulb)
             
         
         
