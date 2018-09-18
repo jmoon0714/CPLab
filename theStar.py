@@ -1,31 +1,49 @@
 from tkinter import *
 from tkinter.colorchooser import askcolor
-import Neuron
+import graphicalNeuron as GN
+import sys
+import time
+
+#%%
 class Paint(object):
 
     DEFAULT_PEN_SIZE = 5.0
     DEFAULT_COLOR = 'black'
-
+    NEURON_TYPES=[GN.Neuron,GN.LIFNeuron,GN.MCPNeuron]
+    NEURON_TYPES_STR=["Neuron","LIFNeuron","MCPNeuron"]
+    SYNAPSE_TYPES=[GN.Synapse]
     def __init__(self):
         self.root = Tk()
-
-        self.neuronButton = Button(self.root, text='Neuron', command=self.use_neuron)
+        self.root.protocol("WM_DELETE_WINDOW", self.root.destroy)
+        self.root.wm_title("Neuron")
+        
+        self.tkvar = StringVar(self.root)
+        self.tkvar.set("Neuron")
+        #self.neuronButton = Button(self.root, text='Neuron', command=self.use_neuron)
+        #self.neuronButton.grid(row=0, column=0)
+        self.neuronButton = OptionMenu(self.root, self.tkvar, *Paint.NEURON_TYPES_STR)
         self.neuronButton.grid(row=0, column=0)
+        self.tkvar.trace('w', self.use_neuron)
+
 
         self.synapseButton = Button(self.root, text='Synapse', command=self.use_synapse)
         self.synapseButton.grid(row=0, column=1)
 
         self.color_button = Button(self.root, text='color', command=self.choose_color)
         self.color_button.grid(row=0, column=2)
+        
+        self.quit_button = Button(self.root, text='quit', command=self.root.destroy)
+        self.quit_button.grid(row=0, column=6)
 
         self.choose_size_button = Scale(self.root, from_=1, to=10, orient=HORIZONTAL)
         self.choose_size_button.grid(row=0, column=4)
 
         self.c = Canvas(self.root, bg='white', width=1000, height=900)
-        self.c.grid(row=1, columnspan=5)
+        self.c.grid(row=1, columnspan=7)
     
         self.setup()
         self.root.mainloop()
+        
 
     def setup(self):
         self.old_x = None
@@ -44,8 +62,17 @@ class Paint(object):
         
         self.listOfEN=[]
         self.listOfES=[]
+        
+        self.currentParams=None
+        self.lastEvent=None
+        self.currentClass=Paint.NEURON_TYPES[0]
 
-    def use_neuron(self):
+    def use_neuron(self,*args):
+        st=self.tkvar.get()
+        
+        for i in range(len(Paint.NEURON_TYPES)):
+            if Paint.NEURON_TYPES_STR[i]==st:
+                self.currentClass=Paint.NEURON_TYPES[i]
         self.activate_button(self.neuronButton)
         print("Neuron currently selected")
 
@@ -59,31 +86,57 @@ class Paint(object):
         self.color = askcolor(color=self.color)[1]
 
     def activate_button(self, some_button):
+        self.currentParams=None
         self.active_button.config(relief=RAISED)
         some_button.config(relief=SUNKEN)
         self.active_button = some_button
         
     def build(self, event):
+        self.lastEvent=event
         if self.active_button==self.neuronButton:
-            self.buildNeuron(event)
+            radius=self.line_width*5
+            centerX= event.x
+            centerY= event.y
+            if self.wouldIntersect(centerX,centerY,radius)==False:
+                if(self.currentParams==None):
+                    InputTaker(self.currentClass.PARAM_LIST, self.buildNeuron, self.currentClass)
+                else:
+                    self.buildNeuron(self.currentParams,self.currentClass)
         elif self.active_button==self.synapseButton:
-            self.buildSynapse(event)
+            self.buildESynapse(event)
         self.old_x=event.x
         self.old_y=event.y
         
-    def buildNeuron(self,event):
+    def buildNeuron(self,params,cls):
+        self.currentParams=params
+        p=[]
+        for entry in params:
+            text  = entry
+            try:
+                text=int(text)
+            except:
+                try:
+                    text=float(text)
+                except:
+                    text=text
+            p.append(text)
+        neuron=cls.arrayConstruct(p)
+        self.buildENeuron(self.lastEvent,neuron)
+        
+        
+    def buildENeuron(self,event,neuron):
         self.line_width = self.choose_size_button.get()
         currentColor =  self.color
         radius=self.line_width*5
         centerX= event.x
         centerY= event.y
         if self.wouldIntersect(centerX,centerY,radius)==False:
-            self.listOfEN.append(EmbeddedNeuron(self.c,centerX, centerY, radius, currentColor,0))
+            self.listOfEN.append(EmbeddedNeuron(self.c,centerX, centerY, radius, currentColor,neuron))
             print("Neuron built")
         else:
             print("Error: Cannot build a neuron in this location. It is too close to another neuron.")
             
-    def buildSynapse(self,event):
+    def buildESynapse(self,event):
         if self.synapseHalfBuilt==False:
             where=self.findWhere(event.x,event.y)
             if where!=None:
@@ -95,6 +148,7 @@ class Paint(object):
         
                 
     def move(self, event):
+        self.lastEvent=event
         where=self.findWhere(self.old_x,self.old_y)
         if self.active_button==self.neuronButton:
             if where!=None:
@@ -111,22 +165,43 @@ class Paint(object):
 
         
     def drop(self, event):
+        self.lastEvent=event
         if self.active_button==self.synapseButton:
             if self.synapseHalfBuilt:
                 where=self.findWhere(event.x,event.y)
                 if where!=None and where!=self.tempSynapse.NFrom:
-                    self.tempSynapse.setNToAndDraw(where)
-                    self.synapseHalfBuilt=False
-                    self.listOfES.append(self.tempSynapse)
-                    self.tempSynapse=None
-                    self.synapseStart=None
-                    print("Synapse built")
+                    self.synapseEnd=where
+                    if(self.currentParams==None):
+                        InputTaker(GN.Synapse.PARAM_LIST, self.buildSynapse, GN.Synapse)
+                    else:
+                        self.buildSynapse(self.currentParams,GN.Synapse)
                 else:
                     self.tempSynapse.undraw()
                     self.synapseHalfBuilt=False
                     self.tempSynapse=None
                     self.synapseStart=None
 
+    def buildSynapse(self,params,cls):
+        self.currentParams=params
+        p=[self.synapseStart.neuron,self.synapseEnd.neuron]
+        for entry in params:
+            text  = entry
+            try:
+                text=int(text)
+            except:
+                try:
+                    text=float(text)
+                except:
+                    text=text
+            p.append(text)
+        self.tempSynapse.setSynapse(cls.arrayConstruct(p))
+        self.tempSynapse.setNToAndDraw(self.synapseEnd)
+        self.synapseHalfBuilt=False
+        self.listOfES.append(self.tempSynapse)
+        self.tempSynapse=None
+        self.synapseStart=None
+        print("Synapse built")
+        
                 
 
     def reset(self, event):
@@ -143,7 +218,50 @@ class Paint(object):
             if self.listOfEN[i]!=exception and self.listOfEN[i].checkIntersect(x,y,r):
                 return True
         return False
+    
+    
+#%%    
+class InputTaker(object):
+    def __init__(self, params, function, cls):
+        self.function=function
+        self.cls=cls
+        self.root = Tk()
+        self.root.wm_title("InputTaker")
+        Label(self.root, text="Input Parameters.").pack()
+        ents = self.makeform(self.root, params)
+        #self.root.bind('<Return>', (lambda event, e=ents: self.fetch(e)))  
+        b1 = Button(self.root, text='Show',\
+          command=(lambda e=ents: self.fetch(e)))
+        b1.pack(side=LEFT, padx=5, pady=5)
+        b2 = Button(self.root, text='Quit', command=self.root.destroy)
+        b2.pack(side=LEFT, padx=5, pady=5)
+        self.root.mainloop()
         
+    def makeform(self,root, fields):
+        entries = []
+        for field in fields:
+            row = Frame(root)
+            lab = Label(row, width=15, text=field, anchor='w')
+            ent = Entry(row)
+            row.pack(side=TOP, fill=X, padx=5, pady=5)
+            lab.pack(side=LEFT)
+            ent.pack(side=RIGHT, expand=YES, fill=X)
+            entries.append((field, ent))
+        return entries
+
+    def fetch(self,entries):
+        p=[]
+        for entry in entries:
+            field = entry[0]
+            text  = entry[1].get()
+            p.append(text)
+            print('%s: "%s"' % (field, text)) 
+        self.function(p, self.cls)
+        self.root.destroy()
+    
+
+    
+#%%    
 class EmbeddedCanvas(object):
     
     def checkIfInside():
@@ -165,6 +283,8 @@ class EmbeddedNeuron(EmbeddedCanvas):
         
         self.synapsesOut=[]
         self.synapsesIn=[]
+        
+        self.neuron=Neuron
 
         
     def checkIfInside(self,x,y):
@@ -203,7 +323,9 @@ class EmbeddedSynapse(EmbeddedCanvas):
         self.shapeBulb=None
         self.synapse=s
         
-        #(2.0**0.5)
+    def setSynapse(self,s):
+        self.synapse=s
+
     def setNToAndDraw(self, NTo):
         self.undraw()
         self.NTo=NTo
@@ -215,11 +337,11 @@ class EmbeddedSynapse(EmbeddedCanvas):
             
     def redraw(self):
         self.undraw()
-        if isinstance(self.synapse, Neuron.Synapse):
-            lineWdt= min(self.synapse.weight, self.NFrom.radius*2)
+        if isinstance(self.synapse, GN.Synapse):
+            lineWdt= min(self.synapse.weight, EmbeddedSynapse.END_CIRCLE_RADIUS*2)
         else:
             lineWdt= 2
-        endCircleRadius=EmbeddedSynapse.END_CIRCLE_RADIUS*lineWdt
+        endCircleRadius=EmbeddedSynapse.END_CIRCLE_RADIUS*2
         delD=endCircleRadius+EmbeddedSynapse.SYNAPTIC_CLEFT_DISTANCE+self.NTo.radius
         bigD=((self.NFrom.centerX-self.NTo.centerX)**2 + (self.NFrom.centerY-self.NTo.centerY)**2)**0.5
         newEndX=int((((bigD-delD)*self.NTo.centerX) + (delD*self.NFrom.centerX))/bigD)
@@ -236,7 +358,7 @@ class EmbeddedSynapse(EmbeddedCanvas):
         
     def drawTemp(self, x, y):
         self.undraw()
-        if isinstance(self.synapse, Neuron.Synapse):
+        if isinstance(self.synapse, GN.Synapse):
             lineWdt= min(self.synapse.weight, self.NFrom.radius*2)
         else:
             lineWdt= 2
@@ -249,8 +371,10 @@ class EmbeddedSynapse(EmbeddedCanvas):
         if self.shapeBulb!=None:
             self.canvas.delete(self.shapeBulb)
             
-        
+#%%        
         
 
 if __name__ == '__main__':
     Paint()
+    print("mainExit")
+    
