@@ -602,7 +602,31 @@ class GUISimulator(GN.Simulator):
     def terminate(self):
         sys.exit()
 
-            
+
+def get_N_foreground_color(color):
+    string_list=[]
+    for char in color:
+        string_list.append(hex_incr(char))
+    return ''.join(string_list)
+        
+def hex_incr (c):
+    if (c== 'a'):
+        return 'b'
+    elif (c== 'b'):
+        return 'c'
+    elif (c== 'c'):
+        return 'd' 
+    elif (c== 'd'):
+        return 'e' 
+    elif (c== 'e'):
+        return 'f' 
+    elif (c== 'f'):
+        return 'f'
+    elif(c== '9'):
+        return 'a'
+    else:
+        return str(int(c) + 1)
+    
 #%%        
         
 
