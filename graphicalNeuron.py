@@ -1,6 +1,5 @@
 #from random import *
 import random
-from graphics import *
 import matplotlib
 import numpy
 import time
@@ -21,7 +20,7 @@ class Neuron(object):
         fired. Must be between 0 and "refractory", inclusive.
     """
     PARAM_LIST=["avoltage", "athreshold", "arefractory", "aname"]
-    PARAM_DEFAULTS=["0","1","1","An Intergratec Neuron"]
+    PARAM_DEFAULTS=["0","1","1","An Intergrater Neuron"]
     @classmethod
     def arrayConstruct(cls, p):
         print("building Neuron: ",p)

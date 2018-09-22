@@ -3,6 +3,7 @@ from tkinter.colorchooser import askcolor
 import graphicalNeuron as GN
 import sys
 import time
+import threading
 
 #%%
 class Paint(object):
@@ -46,8 +47,10 @@ class Paint(object):
     Builds a window where you can build neural nets
     """
     def __init__(self):
+        global simulator
+        simulator= GUISimulator(self,1,40)
         self.root = Tk()    
-        self.root.protocol("WM_DELETE_WINDOW", self.root.destroy)
+        self.root.protocol("WM_DELETE_WINDOW", self.destroy)
         self.root.wm_title("Neuron")
         
         self.tkvar = StringVar(self.root)
@@ -65,17 +68,22 @@ class Paint(object):
         self.color_button = Button(self.root, text='color', command=self.choose_color)
         self.color_button.grid(row=0, column=2)
         
-        self.quit_button = Button(self.root, text='quit', command=self.root.destroy)
-        self.quit_button.grid(row=0, column=6)
+        
+        self.run_button = Button(self.root, text='Run', command=self.run)
+        self.run_button.grid(row=0, column=6)
+        
+        self.quit_button = Button(self.root, text='quit', command=self.destroy)
+        self.quit_button.grid(row=0, column=7)
 
         self.choose_size_button = Scale(self.root, from_=1, to=10, orient=HORIZONTAL)
         self.choose_size_button.grid(row=0, column=4)
 
         self.c = Canvas(self.root, bg='white', width=1000, height=900)
-        self.c.grid(row=1, columnspan=7)
+        self.c.grid(row=1, columnspan=8)
     
         self.setup()
         self.root.mainloop()
+        
         
     """Helper function to the constructor"""
     def setup(self):
@@ -100,7 +108,16 @@ class Paint(object):
         
         self.currentParams=None
         self.currentClass=Paint.NEURON_TYPES[0]
+        
+    def destroy(self):
+        Paint.root.destroy()
+        simulator.terminate()
+        sys.exit()
 
+    def run(self):
+        mt=threading.Thread(target=simulator.main)
+        mt.start()
+        
     """"
         Called when the user selects a new Neuron
         Allocates currentClass to the selected class
@@ -178,6 +195,7 @@ class Paint(object):
                     text=text
             p.append(text)
         neuron=cls.arrayConstruct(p)
+        simulator.addNeuron(neuron)
         self.buildENeuron(self.lastEvent,neuron)
         
     """
@@ -264,6 +282,7 @@ class Paint(object):
                     text=text
             p.append(text)
         self.tempSynapse.setSynapse(cls.arrayConstruct(p))
+        simulator.addSynapse(self.tempSynapse.synapse)
         self.tempSynapse.setNToAndDraw(self.synapseEnd)
         self.synapseHalfBuilt=False
         self.listOfES.append(self.tempSynapse)
@@ -364,7 +383,7 @@ class EmbeddedNeuron(EmbeddedCanvas):
         "mainColor": The color of self
         "shape": The circle that represents this neuron
     Dimentions:
-        "centerX": The X coord of center where this neuron will be drawn. 
+        "centerX": The X coord of center where this neuron will be drawn.cs 
         "centerY": The Y coord of center where this neuron will be drawn. 
         "radius": The radius of this Neuron
         "topLeftX": The X coord of the point that would be at the top left of a 
@@ -452,6 +471,8 @@ class EmbeddedSynapse(EmbeddedCanvas):
         self.shape=None
         self.shapeBulb=None
         self.synapse=s
+        self.shapePulses=[]
+        self.shapeBulbFire=None
         
     """sets self.synapse to s"""
     def setSynapse(self,s):
@@ -488,7 +509,7 @@ class EmbeddedSynapse(EmbeddedCanvas):
         bottomRightY=newEndY+(EmbeddedSynapse.END_CIRCLE_RADIUS)
         self.shapeBulb=self.canvas.create_oval(topLeftX,topLeftY,\
                                            bottomRightX,bottomRightY, outline=self.NFrom.mainColor, fill=self.NFrom.mainColor, width=1)
-        
+    
     """draws a line to help in building synapses. stars an self.NFrom"""
     def drawTemp(self, x, y):
         self.undraw()
@@ -498,6 +519,60 @@ class EmbeddedSynapse(EmbeddedCanvas):
             lineWdt= 2
         self.shape=self.canvas.create_line(self.NFrom.centerX, self.NFrom.centerY, x, y,\
                                            fill=self.NFrom.mainColor, width=lineWdt)
+        
+    """erases all currently drawn pulses
+    checks if there are pulses to draw and draws them
+    """
+    def drawAllPulses(self):
+        self.undrawPulses()
+        if isinstance(self.synapse, GN.Synapse):
+            lineWdt= min(self.synapse.weight, self.NFrom.radius*2)
+        else:
+            return
+        activeDelays=self.synapse.activateFireDelays
+        print(activeDelays)
+        delay=self.synapse.delay
+        for i in range(len(activeDelays)):
+            self.drawPulse(delay-activeDelays[i], lineWdt)
+            
+        
+    """
+    draws a red line that is a part of the axon. this signifies where the pulse is along the axon
+    t indicates the location of the pulse. 0<=t<self.synapse.delay
+    if the pulse is at the end of the axon, also turns the bulb red
+    """
+    def drawPulse(self,t, wdt):
+        
+        endCircleRadius=EmbeddedSynapse.END_CIRCLE_RADIUS*2
+        delD=endCircleRadius+EmbeddedSynapse.SYNAPTIC_CLEFT_DISTANCE+self.NTo.radius
+        bigD=((self.NFrom.centerX-self.NTo.centerX)**2 + (self.NFrom.centerY-self.NTo.centerY)**2)**0.5
+        newEndX=int((((bigD-delD)*self.NTo.centerX) + (delD*self.NFrom.centerX))/bigD)
+        newEndY=int((((bigD-delD)*self.NTo.centerY) + (delD*self.NFrom.centerY))/bigD)
+        
+        
+        x1=(t*newEndX + (self.synapse.delay - t)* self.NFrom.centerX )/self.synapse.delay
+        y1=(t*newEndY + (self.synapse.delay - t)* self.NFrom.centerY )/self.synapse.delay
+        x2=((t+1)*newEndX + (self.synapse.delay - t - 1)* self.NFrom.centerX )/self.synapse.delay
+        y2=((t+1)*newEndY + (self.synapse.delay - t - 1)* self.NFrom.centerY )/self.synapse.delay
+        print("coords ",x1," ",y1," ",x2," ",y2)
+        temp=self.canvas.create_line(x1, y1, x2, y2,\
+                                           fill="red", width=wdt)
+        if x2==newEndX and y2==newEndY:
+            coords=self.canvas.coords(self.shapeBulb)
+            self.shapeBulbFire=self.canvas.create_oval(coords[0],coords[1],\
+                                           coords[2],coords[3], outline=self.NFrom.mainColor, fill="red", width=1)
+        self.shapePulses.append(temp)
+        
+    """
+    Earses all currently drawn pulses
+    """
+    def undrawPulses(self):
+        for p in self.shapePulses:
+            self.canvas.delete(p)
+        if self.shapeBulbFire!=None:
+            self.canvas.delete(self.shapeBulbFire)
+        self.shapeBulbFire=None
+        self.shapePulses=[]
 
     """erases the entire synapse from the canvas"""
     def undraw(self):
@@ -509,7 +584,23 @@ class EmbeddedSynapse(EmbeddedCanvas):
 #%%
             
 class GUISimulator(GN.Simulator):
-    1
+    def __init__(self,Paint2, t, finalT):
+        super(GUISimulator, self).__init__(t=t, finalT=finalT)
+        global Paint
+        Paint=Paint2
+        
+    def main(self):
+        self.appendInput(4,Paint.listOfEN[0].neuron,1)
+        super(GUISimulator, self).main(useDelay=True)
+        
+        
+    def runOneTimeStep(self, currentTau):
+        super(GUISimulator, self).runOneTimeStep(currentTau=currentTau)
+        for aESynapse in Paint.listOfES:
+            aESynapse.drawAllPulses()
+        
+    def terminate(self):
+        sys.exit()
 
             
 #%%        
