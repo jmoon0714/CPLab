@@ -318,15 +318,23 @@ class InputTaker(object):
     Builds the input locations, based on fields
     """
     def makeform(self,root, fields):
+        defaults=self.cls.PARAM_DEFAULTS
         entries = []
+        i=0
         for field in fields:
             row = Frame(root)
             lab = Label(row, width=15, text=field, anchor='w')
-            ent = Entry(row)
+            try:
+                default=defaults[i]
+            except:
+                default=""
+            v = StringVar(root, value=default)
+            ent = Entry(row, textvariable=v)
             row.pack(side=TOP, fill=X, padx=5, pady=5)
             lab.pack(side=LEFT)
             ent.pack(side=RIGHT, expand=YES, fill=X)
             entries.append((field, ent))
+            i=i+1
         return entries
 
     """Collects the inputs and sends them to self.function"""
@@ -497,6 +505,12 @@ class EmbeddedSynapse(EmbeddedCanvas):
             self.canvas.delete(self.shape)
         if self.shapeBulb!=None:
             self.canvas.delete(self.shapeBulb)
+            
+#%%
+            
+class GUISimulator(GN.Simulator):
+    1
+
             
 #%%        
         

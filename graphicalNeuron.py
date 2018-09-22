@@ -21,6 +21,7 @@ class Neuron(object):
         fired. Must be between 0 and "refractory", inclusive.
     """
     PARAM_LIST=["avoltage", "athreshold", "arefractory", "aname"]
+    PARAM_DEFAULTS=["0","1","1","An Intergratec Neuron"]
     @classmethod
     def arrayConstruct(cls, p):
         print("building Neuron: ",p)
@@ -127,6 +128,8 @@ class LIFNeuron(Neuron):
     decayConstant: number that determines the rate of leakiness
     """
     PARAM_LIST=["avoltage", "athreshold", "arefractory","adecay", "aname"]
+    PARAM_DEFAULTS=["0","1","1","5","A LIF Neuron"]
+
     @classmethod
     def arrayConstruct(cls, p):
         return cls(p[0],p[1],p[2],p[3],p[4])
@@ -163,6 +166,8 @@ class MCPNeuron(LIFNeuron):
     """
     
     PARAM_LIST=["avoltage", "athreshold", "arefractory", "aname"]
+    PARAM_DEFAULTS=["0","1","1","A MCPNeuron"]
+
     @classmethod
     def arrayConstruct(cls, p):
         return cls(p[0],p[1],p[2],p[3])
@@ -190,6 +195,8 @@ class Synapse(object):
     """
 
     PARAM_LIST=["weight", "adelay"]
+    PARAM_DEFAULTS=["1","1"]
+
     @classmethod
     def arrayConstruct(cls, p):
         print("building Synapse: ",p)
