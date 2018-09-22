@@ -12,8 +12,41 @@ class Paint(object):
     NEURON_TYPES=[GN.Neuron,GN.LIFNeuron,GN.MCPNeuron]
     NEURON_TYPES_STR=["Neuron","LIFNeuron","MCPNeuron"]
     SYNAPSE_TYPES=[GN.Synapse]
+    
+    """Class Variables:
+    Tkinter variables
+        "root": the tkinter mainframe
+        "tkvar": The variable that the Neuron drop down is set to, which changes the current neuron selected
+        "neuronButton": the dropdown that chooses a neuron. also selects neuron. 
+        "synapseButton": the button that chooses a synapse. 
+        "colorButton": the button to choose the color of next neurons.
+        "quitButton": the button that terminates the program and closes the window
+        "choose_size_button": the slider that lets you choose a tool size
+        "c": the canvas on which items are drawn
+    Event Locations
+        "old_x", "old_y": the location the cursor was at the last time a event was triggered
+        "lastEvent": a pointer to the last event
+    Synapse Construction
+        "synapseStart": Usually null. when a synapse is in the process of being build, points to the neuron where it starts.
+        "synapseHaldBuilt": true iff a synapse is in the process of being built.
+        "tempSynapse": Usually null. when a synapse is in the process of being build, points to the half built synapse.
+    Current Selections
+        "line_width": the current tool size
+        "color": the current color selected
+        "activeButton": the current active button
+    Objects contained
+        "listOfEN": A list of all the embeddedNeurons currently built
+        "listOfES": A list of all the embedded  synapses currently built
+    Parametric construction details
+        "currentParams": A store of set parameters (for repeated same param constructions)
+        "currentClass": The class of object that can currently be built
+    """
+    
+    """Paint Constructor.
+    Builds a window where you can build neural nets
+    """
     def __init__(self):
-        self.root = Tk()
+        self.root = Tk()    
         self.root.protocol("WM_DELETE_WINDOW", self.root.destroy)
         self.root.wm_title("Neuron")
         
@@ -44,10 +77,12 @@ class Paint(object):
         self.setup()
         self.root.mainloop()
         
-
+    """Helper function to the constructor"""
     def setup(self):
         self.old_x = None
         self.old_y = None
+        self.lastEvent=None
+
         self.synapseStart = None
         self.synapseHalfBuilt= False
         self.tempSynapse = None
@@ -64,9 +99,14 @@ class Paint(object):
         self.listOfES=[]
         
         self.currentParams=None
-        self.lastEvent=None
         self.currentClass=Paint.NEURON_TYPES[0]
 
+    """"
+        Called when the user selects a new Neuron
+        Allocates currentClass to the selected class
+        sets active_button to neuronButton
+    
+    """
     def use_neuron(self,*args):
         st=self.tkvar.get()
         
@@ -76,21 +116,35 @@ class Paint(object):
         self.activate_button(self.neuronButton)
         print("Neuron currently selected")
 
+    """"
+        Called when the user selects Synapse
+        sets active_button to synapseButton
+    
+    """
     def use_synapse(self):
         self.activate_button(self.synapseButton)
         print("Synapse currently selected")
 
-
+    """
+        displays a window that lets the user choose a color
+    """
     def choose_color(self):
         self.eraser_on = False
         self.color = askcolor(color=self.color)[1]
 
+    """
+        Implements visual changes for when a button is activated
+    """
     def activate_button(self, some_button):
         self.currentParams=None
         self.active_button.config(relief=RAISED)
         some_button.config(relief=SUNKEN)
         self.active_button = some_button
         
+    """Called when the user left clicks on the canvas
+        Looks at the current parameters and initiates the building process accordingly
+        If there are no current params, displays a input screen
+    """
     def build(self, event):
         self.lastEvent=event
         if self.active_button==self.neuronButton:
@@ -99,7 +153,7 @@ class Paint(object):
             centerY= event.y
             if self.wouldIntersect(centerX,centerY,radius)==False:
                 if(self.currentParams==None):
-                    InputTaker(self.currentClass.PARAM_LIST, self.buildNeuron, self.currentClass)
+                    InputTaker(self.buildNeuron, self.currentClass)
                 else:
                     self.buildNeuron(self.currentParams,self.currentClass)
         elif self.active_button==self.synapseButton:
@@ -107,6 +161,9 @@ class Paint(object):
         self.old_x=event.x
         self.old_y=event.y
         
+    """
+        constructs a GN.Neuron object and uses it to build an EmbeddedNeuron
+    """
     def buildNeuron(self,params,cls):
         self.currentParams=params
         p=[]
@@ -123,7 +180,9 @@ class Paint(object):
         neuron=cls.arrayConstruct(p)
         self.buildENeuron(self.lastEvent,neuron)
         
-        
+    """
+        Builds an EmbeddedNeuron at where the mouse was clicked, based on the toolSize and current color
+    """
     def buildENeuron(self,event,neuron):
         self.line_width = self.choose_size_button.get()
         currentColor =  self.color
@@ -136,6 +195,10 @@ class Paint(object):
         else:
             print("Error: Cannot build a neuron in this location. It is too close to another neuron.")
             
+    """starts the proccess of building a synapse
+        sets synapseHalfBuild to True
+        links the first neuron up
+    """
     def buildESynapse(self,event):
         if self.synapseHalfBuilt==False:
             where=self.findWhere(event.x,event.y)
@@ -146,7 +209,7 @@ class Paint(object):
             else:
                 print("Error: Cannot start synapse outside a neuron")
         
-                
+    """Click and drag a neuron around, or if synapseHalfBuilt is true, move a synapse end point around"""
     def move(self, event):
         self.lastEvent=event
         where=self.findWhere(self.old_x,self.old_y)
@@ -163,7 +226,10 @@ class Paint(object):
         self.old_y=event.y
 
 
-        
+    """
+        If synapseHalfBuilt is true, it tries to build a synapse depending on drop location. 
+        if currentparameters is none, opens a input window
+    """
     def drop(self, event):
         self.lastEvent=event
         if self.active_button==self.synapseButton:
@@ -172,7 +238,7 @@ class Paint(object):
                 if where!=None and where!=self.tempSynapse.NFrom:
                     self.synapseEnd=where
                     if(self.currentParams==None):
-                        InputTaker(GN.Synapse.PARAM_LIST, self.buildSynapse, GN.Synapse)
+                        InputTaker(self.buildSynapse, GN.Synapse)
                     else:
                         self.buildSynapse(self.currentParams,GN.Synapse)
                 else:
@@ -181,6 +247,9 @@ class Paint(object):
                     self.tempSynapse=None
                     self.synapseStart=None
 
+    """
+        Builds a GN.Synapse object which is used to build the embedded synapse
+    """
     def buildSynapse(self,params,cls):
         self.currentParams=params
         p=[self.synapseStart.neuron,self.synapseEnd.neuron]
@@ -202,17 +271,18 @@ class Paint(object):
         self.synapseStart=None
         print("Synapse built")
         
-                
-
-    def reset(self, event):
-        self.old_x, self.old_y = None, None
-    
+    """If the cursor is in a neuron returns that neuron
+        else returns None
+    """
     def findWhere(self, x,y):
         for i in range(len(self.listOfEN)):
             if self.listOfEN[i].checkIfInside(x,y):
                 return self.listOfEN[i]
         return None
     
+    """
+        returns true if a neuron built at this location would intersect another neuron
+    """
     def wouldIntersect(self, x,y,r,exception=None):
         for i in range(len(self.listOfEN)):
             if self.listOfEN[i]!=exception and self.listOfEN[i].checkIntersect(x,y,r):
@@ -222,7 +292,14 @@ class Paint(object):
     
 #%%    
 class InputTaker(object):
-    def __init__(self, params, function, cls):
+    def __init__(self, function, cls):
+        """
+        Class Variables:
+            "function": a refrence to the function that is called when go is clicked
+            "cls": the class of the object that "function will build"
+            "root": The Tkinter root that takes the inputs
+        """
+        params=cls.PARAM_LIST
         self.function=function
         self.cls=cls
         self.root = Tk()
@@ -237,6 +314,9 @@ class InputTaker(object):
         b2.pack(side=LEFT, padx=5, pady=5)
         self.root.mainloop()
         
+    """
+    Builds the input locations, based on fields
+    """
     def makeform(self,root, fields):
         entries = []
         for field in fields:
@@ -249,6 +329,7 @@ class InputTaker(object):
             entries.append((field, ent))
         return entries
 
+    """Collects the inputs and sends them to self.function"""
     def fetch(self,entries):
         p=[]
         for entry in entries:
@@ -268,6 +349,30 @@ class EmbeddedCanvas(object):
         return False;
     
 class EmbeddedNeuron(EmbeddedCanvas):
+    """
+    Class Variables:
+    Tkinter:
+        "canvas": The canvas where self is drawn
+        "mainColor": The color of self
+        "shape": The circle that represents this neuron
+    Dimentions:
+        "centerX": The X coord of center where this neuron will be drawn. 
+        "centerY": The Y coord of center where this neuron will be drawn. 
+        "radius": The radius of this Neuron
+        "topLeftX": The X coord of the point that would be at the top left of a 
+            quadrilateral that enclosed the circle
+        "topLeftY": The Y coord of the point that would be at the top left of a 
+            quadrilateral that enclosed the circle
+        "bottomRightX": The X coord of the point that would be at the bottom right of a 
+            quadrilateral that enclosed the circle
+        "bottomRightY": The Y coord of the point that would be at the bottom right of a 
+            quadrilateral that enclosed the circle
+    Neuron Details:
+        "synapsesOut": a list of embedded synapses that leave this neuron
+        "synapseIn": a list of embedded synapses to this neuron
+
+        
+    """
     def __init__(self, c, centerX, centerY, radius, color, Neuron):
         self.canvas=c
         self.centerX=centerX
@@ -286,13 +391,15 @@ class EmbeddedNeuron(EmbeddedCanvas):
         
         self.neuron=Neuron
 
-        
+    """Checks if a point is inside this neuron"""
     def checkIfInside(self,x,y):
         return (x-self.centerX)**2 + (y-self.centerY)**2 < self.radius**2
     
+    """checks if a circle would intersect this neuron"""
     def checkIntersect(self,x,y,r):
         return (x-self.centerX)**2 + (y-self.centerY)**2 < (self.radius+r+2)**2
     
+    """redraws this neuron to a new Center"""
     def redraw(self, centerX, centerY):
         self.undraw()
         self.centerX=centerX
@@ -309,12 +416,27 @@ class EmbeddedNeuron(EmbeddedCanvas):
         for S in self.synapsesIn:
             S.redraw()
         
+    """Erases this neuron"""
     def undraw(self):
         self.canvas.delete(self.shape)
         
 class EmbeddedSynapse(EmbeddedCanvas):
     END_CIRCLE_RADIUS=3
     SYNAPTIC_CLEFT_DISTANCE=2
+    """Class Variables
+    Statics:
+        "END_CIRCLE_RADIUS": the radius of the circle at the end of a synapse
+        "SYNAPTIC_CLEFT_DISTANCE": the distance between the end of a synapse and the next neuron
+    Tkinter: 
+        "canvas": The canvas this synapse is drawn on
+        "shape": A refrence to the line that represents the axon
+        "shapeBulb": a refrence to teh circle representing the end of a synapse
+    Synapse Details:
+        "synapse": A refrence to the synapse self represents
+        "NTo": The embeddedNeuron this synapse is going to
+        "NFrom": The embeddedNeuron this synapse comes from
+        
+    """
     def __init__(self, c, NFrom, NTo=None, s=None):
         self.canvas=c
         self.NFrom=NFrom
@@ -323,9 +445,11 @@ class EmbeddedSynapse(EmbeddedCanvas):
         self.shapeBulb=None
         self.synapse=s
         
+    """sets self.synapse to s"""
     def setSynapse(self,s):
         self.synapse=s
 
+    """Sets self.NTo to NTo, and then draws the completed synapse to that EmbeddedNeuron"""
     def setNToAndDraw(self, NTo):
         self.undraw()
         self.NTo=NTo
@@ -335,6 +459,7 @@ class EmbeddedSynapse(EmbeddedCanvas):
         if isinstance(self.NFrom, EmbeddedNeuron) and self not in self.NTo.synapsesIn:
             self.NTo.synapsesIn.append(self)
             
+    """redraws this synapse. takes into account changes in the locations of self.NTo and self.NFrom, and the synaptic weight"""
     def redraw(self):
         self.undraw()
         if isinstance(self.synapse, GN.Synapse):
@@ -356,6 +481,7 @@ class EmbeddedSynapse(EmbeddedCanvas):
         self.shapeBulb=self.canvas.create_oval(topLeftX,topLeftY,\
                                            bottomRightX,bottomRightY, outline=self.NFrom.mainColor, fill=self.NFrom.mainColor, width=1)
         
+    """draws a line to help in building synapses. stars an self.NFrom"""
     def drawTemp(self, x, y):
         self.undraw()
         if isinstance(self.synapse, GN.Synapse):
@@ -365,6 +491,7 @@ class EmbeddedSynapse(EmbeddedCanvas):
         self.shape=self.canvas.create_line(self.NFrom.centerX, self.NFrom.centerY, x, y,\
                                            fill=self.NFrom.mainColor, width=lineWdt)
 
+    """erases the entire synapse from the canvas"""
     def undraw(self):
         if self.shape!=None:
             self.canvas.delete(self.shape)
