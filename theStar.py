@@ -48,7 +48,7 @@ class Paint(object):
     """
     def __init__(self):
         global simulator
-        simulator= GUISimulator(self,1,40)
+        simulator= GUISimulator(self,0.25,600)
         self.root = Tk()    
         self.root.protocol("WM_DELETE_WINDOW", self.destroy)
         self.root.wm_title("Neuron")
@@ -417,6 +417,7 @@ class EmbeddedNeuron(EmbeddedCanvas):
         self.synapsesIn=[]
         
         self.neuron=Neuron
+        self.shapeFill=None
 
     """Checks if a point is inside this neuron"""
     def checkIfInside(self,x,y):
@@ -442,6 +443,23 @@ class EmbeddedNeuron(EmbeddedCanvas):
             S.redraw()
         for S in self.synapsesIn:
             S.redraw()
+        
+    def drawFill(self):
+        self.undrawFill()
+        fillRatio=180*min(max(self.neuron.voltage / self.neuron.threshold,0),1)
+        start=360-90-fillRatio
+        width=2*fillRatio
+        if width<=2:
+            return
+        self.shapeFill=self.canvas.create_arc(self.topLeftX,self.topLeftY,\
+                    self.bottomRightX,self.bottomRightY, start=start, extent=width, style=CHORD,\
+                    outline=self.mainColor, fill=get_N_foreground_color(self.mainColor), width=2)
+        
+        
+    def undrawFill(self):
+        if self.shapeFill!=None:
+            self.canvas.delete(self.shapeFill)
+        
         
     """Erases this neuron"""
     def undraw(self):
@@ -492,7 +510,7 @@ class EmbeddedSynapse(EmbeddedCanvas):
     def redraw(self):
         self.undraw()
         if isinstance(self.synapse, GN.Synapse):
-            lineWdt= min(self.synapse.weight, EmbeddedSynapse.END_CIRCLE_RADIUS*2)
+            lineWdt= max(min(self.synapse.weight, EmbeddedSynapse.END_CIRCLE_RADIUS*2),2)
         else:
             lineWdt= 2
         endCircleRadius=EmbeddedSynapse.END_CIRCLE_RADIUS*2
@@ -514,7 +532,7 @@ class EmbeddedSynapse(EmbeddedCanvas):
     def drawTemp(self, x, y):
         self.undraw()
         if isinstance(self.synapse, GN.Synapse):
-            lineWdt= min(self.synapse.weight, self.NFrom.radius*2)
+            lineWdt= max(min(self.synapse.weight, EmbeddedSynapse.END_CIRCLE_RADIUS*2),2)
         else:
             lineWdt= 2
         self.shape=self.canvas.create_line(self.NFrom.centerX, self.NFrom.centerY, x, y,\
@@ -526,11 +544,10 @@ class EmbeddedSynapse(EmbeddedCanvas):
     def drawAllPulses(self):
         self.undrawPulses()
         if isinstance(self.synapse, GN.Synapse):
-            lineWdt= min(self.synapse.weight, self.NFrom.radius*2)
+            lineWdt= max(min(self.synapse.weight, EmbeddedSynapse.END_CIRCLE_RADIUS*2),2)
         else:
             return
         activeDelays=self.synapse.activateFireDelays
-        print(activeDelays)
         delay=self.synapse.delay
         for i in range(len(activeDelays)):
             self.drawPulse(delay-activeDelays[i], lineWdt)
@@ -554,13 +571,12 @@ class EmbeddedSynapse(EmbeddedCanvas):
         y1=(t*newEndY + (self.synapse.delay - t)* self.NFrom.centerY )/self.synapse.delay
         x2=((t+1)*newEndX + (self.synapse.delay - t - 1)* self.NFrom.centerX )/self.synapse.delay
         y2=((t+1)*newEndY + (self.synapse.delay - t - 1)* self.NFrom.centerY )/self.synapse.delay
-        print("coords ",x1," ",y1," ",x2," ",y2)
         temp=self.canvas.create_line(x1, y1, x2, y2,\
-                                           fill=get_N_foreground_color(self.NFrom.mainColor), width=wdt)
+                                           fill="red", width=wdt)
         if x2==newEndX and y2==newEndY:
             coords=self.canvas.coords(self.shapeBulb)
             self.shapeBulbFire=self.canvas.create_oval(coords[0],coords[1],\
-                                           coords[2],coords[3], outline=self.NFrom.mainColor, fill="red", width=1)
+                                           coords[2],coords[3], outline="red", fill="red", width=1)
         self.shapePulses.append(temp)
         
     """
@@ -595,19 +611,20 @@ class GUISimulator(GN.Simulator):
         
         
     def runOneTimeStep(self, currentTau):
-        super(GUISimulator, self).runOneTimeStep(currentTau=currentTau)
+        for aENeuron in Paint.listOfEN:
+            aENeuron.drawFill()
+        super(GUISimulator, self).runOneTimeStep(currentTau=currentTau) 
         for aESynapse in Paint.listOfES:
             aESynapse.drawAllPulses()
+
         
     def terminate(self):
         sys.exit()
 
 
 def get_N_foreground_color(color):
-    print(color)
     color=color[1:]
     each=int(len(color)/3)
-    print(each)
     r=color[:-2*each]
     g=color[each:-each]
     b=color[-each:]
@@ -620,14 +637,11 @@ def get_N_foreground_color(color):
         
 def hex_incr (c, add):
     l=len(c)
-    print("len",l)
     n=int(c,16)
-    print("int",n)
     n=n+add
     s=hex(n)
     s=s[2:]
     s="000"+s
-    print("hex",s)
     return s[len(s)-l:]
     
     

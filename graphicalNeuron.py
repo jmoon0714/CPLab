@@ -323,9 +323,12 @@ class Simulator(object):
         """ runs a loop through all instants of tau """
         for currentTau in range(0,self.finalTau):
             print(currentTau)
+            t1= (time.time())
             self.runOneTimeStep(currentTau)
-            if useDelay:
-                time.sleep(self.tau)
+            t2= time.time()
+            dt=max(self.tau-(t2-t1),0)
+            if useDelay and dt>0:
+                time.sleep(dt)
             
     def runOneTimeStep(self, currentTau):
         count = 0
