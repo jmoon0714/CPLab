@@ -9,7 +9,7 @@ import threading
 class Paint(object):
 
     DEFAULT_PEN_SIZE = 5.0
-    DEFAULT_COLOR = 'black'
+    DEFAULT_COLOR = "#000000"
     NEURON_TYPES=[GN.Neuron,GN.LIFNeuron,GN.MCPNeuron]
     NEURON_TYPES_STR=["Neuron","LIFNeuron","MCPNeuron"]
     SYNAPSE_TYPES=[GN.Synapse]
@@ -556,7 +556,7 @@ class EmbeddedSynapse(EmbeddedCanvas):
         y2=((t+1)*newEndY + (self.synapse.delay - t - 1)* self.NFrom.centerY )/self.synapse.delay
         print("coords ",x1," ",y1," ",x2," ",y2)
         temp=self.canvas.create_line(x1, y1, x2, y2,\
-                                           fill="red", width=wdt)
+                                           fill=get_N_foreground_color(self.NFrom.mainColor), width=wdt)
         if x2==newEndX and y2==newEndY:
             coords=self.canvas.coords(self.shapeBulb)
             self.shapeBulbFire=self.canvas.create_oval(coords[0],coords[1],\
@@ -604,28 +604,32 @@ class GUISimulator(GN.Simulator):
 
 
 def get_N_foreground_color(color):
-    string_list=[]
-    for char in color:
-        string_list.append(hex_incr(char))
-    return ''.join(string_list)
+    print(color)
+    color=color[1:]
+    each=int(len(color)/3)
+    print(each)
+    r=color[:-2*each]
+    g=color[each:-each]
+    b=color[-each:]
+    string_list=["#"]
+    string_list.append(hex_incr(r,100))
+    string_list.append(hex_incr(g,100))
+    string_list.append(hex_incr(b,100))
+    
+    return string_list[0]+string_list[1]+string_list[2]+string_list[3]
         
-def hex_incr (c):
-    if (c== 'a'):
-        return 'b'
-    elif (c== 'b'):
-        return 'c'
-    elif (c== 'c'):
-        return 'd' 
-    elif (c== 'd'):
-        return 'e' 
-    elif (c== 'e'):
-        return 'f' 
-    elif (c== 'f'):
-        return 'f'
-    elif(c== '9'):
-        return 'a'
-    else:
-        return str(int(c) + 1)
+def hex_incr (c, add):
+    l=len(c)
+    print("len",l)
+    n=int(c,16)
+    print("int",n)
+    n=n+add
+    s=hex(n)
+    s=s[2:]
+    s="000"+s
+    print("hex",s)
+    return s[len(s)-l:]
+    
     
 #%%        
         
