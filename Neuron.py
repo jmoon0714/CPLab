@@ -194,6 +194,7 @@ class Synapse(object):
         self.activateFireDelays = []
         self.pre.postSynapses.append(self)
         self.post.preSynapses.append(self)
+        self.weightData = [weight]
         
     def activate(self):
         """ appends delay to activateFireDelays
@@ -216,7 +217,7 @@ class Synapse(object):
         self.activateFireDelays = self.activateFireDelays[count:]
         
     def changeWeights(self):
-        0
+        self.weightData.append(self.weight)
             
     def plotWeight(self):
         0
@@ -288,11 +289,10 @@ class Simulator(object):
         """
         self.synapseCheckList=[]
         self.neuronCheckList=[]
-        self.neuronHistory=[]
         self.tau=t
         self.finalTau=finalT
-        self.inputArray= []
-        
+        self.inputArray= []      
+
     def addNeuron(self, aNeuron):
         self.neuronCheckList.append(aNeuron)
     
@@ -301,18 +301,22 @@ class Simulator(object):
             self.addNeuron(neuron)
     
     def clear(self):
+        self.clearHistory()
         self.synapseCheckList=[]
         self.neuronCheckList=[]
         self.inputArray= [] 
-        self.clearHistory()
         
     def clearHistory(self):
-        for neuron in self.neuronChecklist:
-            neuron.voltageHistory = neuron.voltageHistory[0]
-            neuron.voltage= neuro
+        for neuron in self.neuronCheckList:
+            neuron.voltageHistory = [neuron.voltageHistory[0]]
+            neuron.voltage = neuron.voltageHistory[0]
             neuron.spikeTimes = []
-        for synapse in self.synapseC:
+            neuron.refractCount = 0
+            neuron.sumInputs = 0
+        for synapse in self.synapseCheckList:
             synapse.activateFireDelays= []
+            synapse.weight = synapse.weightData[0]
+            synapse.weightData = [synapse.weightData[0]]
         
     def addSynapse(self, aSynapse):
         self.synapseCheckList.append(aSynapse)
@@ -354,7 +358,6 @@ class Simulator(object):
         firedNeurons = []
         for neuronToCheck in self.neuronCheckList:
             firedNeurons.append(neuronToCheck.check(currentTau))
-            self.neuronHistory.append(neuronToCheck)
         return firedNeurons
     
     def rasterPlot(self, aNeuronList):
@@ -516,8 +519,6 @@ class HebbianSynapse(Synapse):
     def __init__(self, neuron1, neuron2, weight=1, adelay=1, aHebbianConstant=0.05, aCooincidence=3):
         super(HebbianSynapse, self).__init__(neuron1, neuron2, weight, adelay)
         self.changeConstant=aHebbianConstant
-        self.weightData=[]
-        self.weightData.append(self.weight)
         self.CDT=aCooincidence
         
     def changeWeights(self):
@@ -558,8 +559,6 @@ class HebbianSynapse(Synapse):
 class STDPSynapse(Synapse):
     def __init__(self, neuron1, neuron2, weight=1, adelay=1):
         super(STDPSynapse, self).__init__(neuron1, neuron2, weight, adelay)
-        self.weightData=[]
-        self.weightData.append(self.weight)
         self.negCount=0
         self.posCount=0
         
