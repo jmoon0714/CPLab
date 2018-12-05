@@ -5,7 +5,7 @@ Created on Wed Dec  5 12:21:25 2018
 @author: jmoon0714
 """
 
-import neuron as neuro
+import Neuron as neuro
 import numpy as np
 
 class Gate(object):

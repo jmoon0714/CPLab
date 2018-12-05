@@ -465,13 +465,8 @@ class EmbeddedNeuron(EmbeddedCanvas):
         
     def drawFire(self):
         self.undrawFill()
-        fillRatio=180
-        start=360-90-fillRatio
-        width=2*fillRatio
-        
-        self.shapeFill=self.canvas.create_arc(self.topLeftX,self.topLeftY,\
-                    self.bottomRightX,self.bottomRightY, start=start, extent=width, style=CHORD,\
-                    outline=self.mainColor, fill=red, width=2)
+        self.shapeFill=self.canvas.create_oval(self.topLeftX,self.topLeftY,\
+                self.bottomRightX,self.bottomRightY, outline=self.mainColor, fill="red", width=2)
         
         
     """Erases this neuron"""
@@ -640,12 +635,12 @@ class GUISimulator(GN.Simulator):
         
         
     def runOneTimeStep(self, currentTau):
-        for aENeuron in Paint.listOfEN:
-            aENeuron.drawFill()
         firedNeurons = super(GUISimulator, self).runOneTimeStep(currentTau=currentTau) 
         for aENeuron in Paint.listOfEN:
             if aENeuron.neuron in firedNeurons:
                 aENeuron.drawFire()
+            else:
+                aENeuron.drawFill()
                 
         for aESynapse in Paint.listOfES:
             aESynapse.drawAllPulses()
