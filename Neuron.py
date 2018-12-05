@@ -88,19 +88,23 @@ class Neuron(object):
         """builds and returns completeSpikeTimes,
         which is a list of the spikes at all times
         """
-        maxTauToDisplay = max(self.spikeTimes)
-        self.completeSpikeTimes= []
-        for i in range(maxTauToDisplay): 
-            if(i in self.spikeTimes):
-                self.completeSpikeTimes.append(1)
-            else:
-                self.completeSpikeTimes.append(0)
-        return self.completeSpikeTimes
+        if len(self.spikeTimes) != 0 :
+            maxTauToDisplay = max(self.spikeTimes)
+            self.completeSpikeTimes= []
+            for i in range(maxTauToDisplay): 
+                if(i in self.spikeTimes):
+                    self.completeSpikeTimes.append(1)
+                else:
+                    self.completeSpikeTimes.append(0)
+            return self.completeSpikeTimes
+        else:
+            self.completeSpikeTimes = []
+            return self.completeSpikeTimes 
                 
     def plotSpikes(self):
         """ using matplotlib.pyplot.plot, plots spikes verses time graph"""
         self.getCompleteSpikeTimes()
-        b=numpy.ones_like(self.completeSpikeTimes)
+        b=np.ones_like(self.completeSpikeTimes)
         matplotlib.pyplot.plot(b)
         matplotlib.pyplot.eventplot(self.spikeTimes)
         matplotlib.pyplot.xlabel("time")        
@@ -284,15 +288,39 @@ class Simulator(object):
         """
         self.synapseCheckList=[]
         self.neuronCheckList=[]
+        self.neuronHistory=[]
         self.tau=t
         self.finalTau=finalT
         self.inputArray= []      
-
+        self.neuronHistory= []
+        self.synapseHistory=[]
+        
     def addNeuron(self, aNeuron):
         self.neuronCheckList.append(aNeuron)
+    
+    def addNeurons(self, neuron_lst):
+        for neuron in neuron_lst:
+            self.addNeuron(neuron)
+    
+    def clear(self):
+        self.synapseCheckList=[]
+        self.neuronCheckList=[]
+        self.inputArray= [] 
+        self.clearHistory()
+        
+    def clearHistory(self):
+        for neuron in self.neuronHistory:
+            neuron.voltageHistory = []
+            neuron.spikeTimes = []
+        for synapse in self.synapseHistory:
+            synapse.activateFireDelays= []
         
     def addSynapse(self, aSynapse):
         self.synapseCheckList.append(aSynapse)
+    
+    def addSynapses(self, synapse_lst):
+        for synapse in synapse_lst:
+            self.addSynapse(synapse)
         
     def appendInput(self, aTime, aNeuron, aVoltage):
         """ Precondition:
@@ -326,6 +354,7 @@ class Simulator(object):
         firedNeurons = []
         for neuronToCheck in self.neuronCheckList:
             firedNeurons.append(neuronToCheck.check(currentTau))
+            self.neuronHistory.append(neuronToCheck)
         return firedNeurons
     
     def rasterPlot(self, aNeuronList):
@@ -652,5 +681,8 @@ class competitiveInhibitor(Neuron):
             else:
                 self.preSynapses[i].pre.sumInputs=max(self.preSynapses[i].pre.sumInputs\
                                 ,self.preSynapses[i].pre.threshold)
-        
     
+
+
+        
+        
