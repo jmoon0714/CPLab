@@ -344,7 +344,9 @@ class Simulator(object):
         
         firedNeurons = []
         for neuronToCheck in self.neuronCheckList:
-            firedNeurons.append(neuronToCheck.check(currentTau))
+            fireCheck = neuronToCheck.check(currentTau)
+            if fireCheck:
+                firedNeurons.append(neuronToCheck)
         return firedNeurons
     
     def rasterPlot(self, aNeuronList):

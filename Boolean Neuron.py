@@ -123,3 +123,4 @@ sim.addSynapses(not_gate.get_Synapses())
 sim.appendInput(1,not_gate.get_Neurons()[0],1)
 sim.main()
 sim.rasterPlot(not_gate.get_Neurons())
+
