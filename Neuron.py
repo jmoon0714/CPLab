@@ -350,7 +350,6 @@ class Simulator(object):
         
         for synapseToCheck in self.synapseCheckList:
             synapseToCheck.check(currentTau)
-            self.synapseHistory.append(synapseToCheck)
         
         for synapseWeightToChange in self.synapseCheckList:
             synapseWeightToChange.changeWeights()
