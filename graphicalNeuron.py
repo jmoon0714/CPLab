@@ -1,5 +1,6 @@
 #from random import *
 import random
+from graphics import *
 import matplotlib
 import numpy
 import time
@@ -19,28 +20,22 @@ class Neuron(object):
     "refractCount": is the refractory time left since this neuron last 
         fired. Must be between 0 and "refractory", inclusive.
     """
-    PARAM_LIST=["avoltage", "athreshold", "arefractory", "aname"]
-    PARAM_DEFAULTS=["0","1","1","An Intergrater Neuron"]
-    @classmethod
-    def arrayConstruct(cls, p):
-        print("building Neuron: ",p)
-        return cls(p[0],p[1],p[2],p[3])
-    
+
     def __init__(self, avoltage = 0, athreshold = 1, arefractory = 1, aname=""): 
         """ "avoltage": initial voltage; by default initialized to 0.
             "athreshold": this neuron's threshold; by default initialized to 1.
             "arefractory": how many time steps the neuron is inactive following an AP;
                 by default is initialized to 1.
             "aname": a descriptive name, used in printouts about this Neuron
-            
+
             1) A variable called "refractCount" is initialized to 0, 
                 refractCount represents the amount of time steps before 
                 this neuron can fire again, at most "refractory" steps. 
-            
+
             2) Each neuron holds two lists, "postSynapses" and 
                 "preSynapses," which store instances of Synapse, representing 
                 the synapses on the axon and dendrites of this neuron.
-            
+
             4) Each neuron has lists spikeTimes and voltageHistory; the former 
                 tracks the voltage over time, and the latter tracks the spikes over time.
         """
@@ -56,18 +51,18 @@ class Neuron(object):
         self.name = aname
         if self.name=="":
             self.name = str(self)
-    
+
     def addVoltage(self, aSum):
         """ Precondition:
             "v": adds "v" to sumInputs.
         """
         self.sumInputs += aSum
-    
+
     def AP(self):
         """ activates this neuron's postSynapses """
         for synapse in self.postSynapses:
             synapse.activate()
-                
+
     def check(self, currentTau):
         """ called by simulator
         adds all the previously incoming inputs
@@ -88,7 +83,7 @@ class Neuron(object):
                 print("AP at "+ str(currentTau) + " at " + self.name)
                 return True
         return False
-    
+
     def getCompleteSpikeTimes(self):
         """builds and returns completeSpikeTimes,
         which is a list of the spikes at all times
@@ -101,7 +96,7 @@ class Neuron(object):
             else:
                 self.completeSpikeTimes.append(0)
         return self.completeSpikeTimes
-                
+
     def plotSpikes(self):
         """ using matplotlib.pyplot.plot, plots spikes verses time graph"""
         self.getCompleteSpikeTimes()
@@ -111,8 +106,8 @@ class Neuron(object):
         matplotlib.pyplot.xlabel("time")        
         matplotlib.pyplot.title("single neuron raster plot of Neuron "+self.name)
         matplotlib.pyplot.show()
-        
-        
+
+
     def plotVoltage(self):
         """ using matplotlib.pyplot.plot, plots voltage verses time graph"""
         matplotlib.pyplot.plot(self.voltageHistory)
@@ -120,19 +115,13 @@ class Neuron(object):
         matplotlib.pyplot.ylabel("Voltage")
         matplotlib.pyplot.title("Voltage/time graph of Neuron "+self.name)
         matplotlib.pyplot.show()
-    
+
 class LIFNeuron(Neuron):
     """ Class Invariant: 
     Inherits Neuron
     decayConstant: number that determines the rate of leakiness
     """
-    PARAM_LIST=["avoltage", "athreshold", "arefractory","adecay", "aname"]
-    PARAM_DEFAULTS=["0","1","1","5","A LIF Neuron"]
 
-    @classmethod
-    def arrayConstruct(cls, p):
-        return cls(p[0],p[1],p[2],p[3],p[4])
-    
     def __init__(self, avoltage=0, athreshold=1, arefractory=1, adecay=5, aname=""): 
         """ Precondition:
         "avoltage": see Neuron documentation
@@ -144,18 +133,18 @@ class LIFNeuron(Neuron):
         super(LIFNeuron, self).__init__(avoltage=avoltage, athreshold=athreshold,\
              arefractory=arefractory, aname=aname)
         self.decayConstant= adecay
-        
+
     def leak(self, numTauSteps):
         """ calculates the desired leak in the neuron for numTauSteps"""
         self.voltage= self.voltage*((1-(1/self.decayConstant))**(numTauSteps))
-    		
+
     def check(self, currentTau):
         """ called by simulator
         calculates the leak from one time step
         calls check for superclass Neuron
         """
         self.leak(1)
-        return super(LIFNeuron, self).check(currentTau)	
+        return super(LIFNeuron, self).check(currentTau) 
 
 class MCPNeuron(LIFNeuron): 
     """ Class Invariant:
@@ -163,14 +152,7 @@ class MCPNeuron(LIFNeuron):
     Essentially the same as an LIF neuron with decay constant of 1, which ensures
     the neuron "forgets" all inputs before the current time step due to large leak
     """
-    
-    PARAM_LIST=["avoltage", "athreshold", "arefractory", "aname"]
-    PARAM_DEFAULTS=["0","1","1","A MCPNeuron"]
 
-    @classmethod
-    def arrayConstruct(cls, p):
-        return cls(p[0],p[1],p[2],p[3])
-    
     def __init__(self, avoltage=0, athreshold=1, arefractory=1, aname=""):
         """ Precondition:
         "avoltage": see Neuron documentation
@@ -193,13 +175,6 @@ class Synapse(object):
           firing when element reaches 0, and element is popped off activateFireDelays.
     """
 
-    PARAM_LIST=["weight", "adelay"]
-    PARAM_DEFAULTS=["1","1"]
-
-    @classmethod
-    def arrayConstruct(cls, p):
-        print("building Synapse: ",p)
-        return cls(p[0],p[1],p[2],p[3])
 
     def __init__(self, neuron1, neuron2, weight=1, adelay=1):
         """ Precondition:
@@ -215,16 +190,16 @@ class Synapse(object):
         self.activateFireDelays = []
         self.pre.postSynapses.append(self)
         self.post.preSynapses.append(self)
-        
+
     def activate(self):
         """ appends delay to activateFireDelays
         """
         self.activateFireDelays.append(self.delay)
-    
+
     def fire(self):
         """ fires the synapse, which affects post's voltage """
         self.post.addVoltage(self.weight)
-            
+
     def check(self, currentTau):
         """ decrements all of activateFireDelays by 1; 
         when one of activateFireDelays is 0, pops it off the list and calls fire
@@ -235,7 +210,7 @@ class Synapse(object):
             self.fire()
             count += 1
         self.activateFireDelays = self.activateFireDelays[count:]
-            
+
     @classmethod
     def connect(cls, Alist, Blist, weight=1, d=1):
         synapseList = []
@@ -243,7 +218,7 @@ class Synapse(object):
             for j in Blist:
                 synapseList.append(cls(i,j,weight,d)) 
         return synapseList
-    
+
     @classmethod        
     def randomConnect(cls, Alist, Blist, weight=1, d=1, probability=0.5):
         synapseList = []
@@ -252,7 +227,7 @@ class Synapse(object):
                 if(random.random()<probability):
                     synapseList.append(cls(i,j,weight,d))
         return synapseList
-                    
+
     @classmethod
     def randomWeightConnect(cls, Alist, Blist, minWeight=-1, maxWeight=1, d=1):
         synapseList = []
@@ -261,7 +236,7 @@ class Synapse(object):
                 weight= (random.random() * (maxWeight-minWeight)) + minWeight
                 synapseList.append(cls(i,j,weight,d))
         return synapseList
-                
+
     @classmethod
     def randomWeightRandomConnect(cls, Alist, Blist, minWeight= -1, maxWeight= 1,
                                   d=1, probability= 0.5):
@@ -272,7 +247,7 @@ class Synapse(object):
                     weight= (random.random() * (maxWeight - minWeight)) + minWeight
                     synapseList.append(cls(i, j, weight, d))
         return synapseList
-                    
+
     @classmethod
     def connectWeightedByDistance(cls, Alist, Blist, minWeight=0, maxWeight=1, 
                                   spread=-1, d=1):
@@ -286,7 +261,7 @@ class Synapse(object):
                     synapseList.append(cls(Alist[i], Blist[j],\
                     weight=((maxWeight - minWeight)/(distance + 1)) + minWeight, adelay=d))
         return synapseList
-            
+
 
 #%%
 class Simulator(object):
@@ -296,7 +271,7 @@ class Simulator(object):
         "tau": minimum timestep. All time is in unit tau
         "finalTau": the last time (in tau) we care about
         inputArray: 2 dimensional array, dimensions 3*n, that 
-        		stores info about when to stimulate which neuron with what voltage
+                        stores info about when to stimulate which neuron with what voltage
     """
     def __init__(self, t= 1, finalT= 10000000):
         """ Precondition:
@@ -309,10 +284,10 @@ class Simulator(object):
 
     def addNeuron(self, aNeuron):
         self.neuronCheckList.append(aNeuron)
-        
+
     def addSynapse(self, aSynapse):
         self.synapseCheckList.append(aSynapse)
-        
+
     def appendInput(self, aTime, aNeuron, aVoltage):
         """ Precondition:
         """
@@ -323,13 +298,10 @@ class Simulator(object):
         """ runs a loop through all instants of tau """
         for currentTau in range(0,self.finalTau):
             print(currentTau)
-            t1= (time.time())
             self.runOneTimeStep(currentTau)
-            t2= time.time()
-            dt=max(self.tau-(t2-t1),0)
-            if useDelay and dt>0:
-                time.sleep(dt)
-            
+            if useDelay:
+                time.sleep(self.tau)
+
     def runOneTimeStep(self, currentTau):
         count = 0
         while(count < len(self.inputArray) and\
@@ -338,15 +310,15 @@ class Simulator(object):
             addVoltage(self.inputArray[count][2])
             count += 1
         self.inputArray = self.inputArray[count:]
-        
+
         for synapseToCheck in self.synapseCheckList:
             synapseToCheck.check(currentTau)
-        
+
         firedNeurons = []
         for neuronToCheck in self.neuronCheckList:
             firedNeurons.append(neuronToCheck.check(currentTau))
         return firedNeurons
-    
+
     def rasterPlot(self, aNeuronList):
         """ show a raster plot """
         xLocs = []
@@ -364,54 +336,264 @@ class Simulator(object):
         matplotlib.pyplot.ylabel("Neurons (index)")
         matplotlib.pyplot.title("Raster Plot")
         matplotlib.pyplot.show()
-    
-        
-if __name__=='__main__':
+
+class GraphicSimulator(Simulator):
+    """Class Invariants:
+        Inherits Simulator
+        constructList: List of the neurons to be drawn. 
+        storageList: List of the drawn neurons, and the Circle objects that represent them
+        synapseConstList: List of drawn Synapses, and the points that are the 
+        locations of the Neurons that connect them
+        l: length of the graphics window
+        h: Height of the graphics window
+        win: the graphics window displayed
+        locType: way to arrange points
+
+    """
+    def __init__(self, t= 1, finalT=10000000,l=1000, h=500, locType=""):
+        """Preconditions:
+        """
+        self.constructList=[]
+        self.h=h
+        self.l=l
+        self.storageList=[]
+        self.storageList.append([])
+        self.storageList.append([])
+        self.synapseConstList=[]
+        self.locType=locType
+
+        #changed here
+        self.previousNeuronStatusList=[]
+
+        super(GraphicSimulator, self).__init__(t,finalT)
+
+    def addNeuron(self, aNeuron):
+        super(GraphicSimulator, self).addNeuron(aNeuron)
+        self.constructList.append(aNeuron)
+
+    def addSynapse(self, aSynapse):
+        super(GraphicSimulator, self).addSynapse(aSynapse)
+        self.synapseConstList.append(aSynapse)
+
+    def addNeuronList(self, aNeuronList):
+        for aNeuron in aNeuronList:
+            super(GraphicSimulator, self).addNeuron(aNeuron)
+        self.constructList.append(aNeuronList)
+
+    def makeG(self):
+        """Builds graphical representations of all the Neurons in constructList with Circles, 
+        and Synapses in synapseConstList with Lines, stores 
+        them in storage List and synapseConstructList[0:1] and displays them 
+        on the GraphWin win
+        """
+        count = 0
+        count1 = 0
+
+        #changed here
+        self.previousNeuronStatusList=[False for i in range(len(self.neuronCheckList))]
+
+        self.win=GraphWin("Neurons",self.l,self.h,autoflush=False)
+
+        for ob in self.constructList:
+            if ob not in self.storageList[0]:
+                count1 += 1
+                a = ob
+                if not isinstance(a,list):
+                    a = [a]
+                GraphicObjectType = 0
+                if len(a) != 1:
+                    GraphicObjectType = 2
+                for i in range(len(a)):
+                    count += 1
+                    self.storageList[0].append(a[i])
+                    if(GraphicObjectType==0):
+                        r = 5
+                    else:
+                        r = 3
+                    circ = Circle(self.assignLoc(count, count1, GraphicObjectType, len(a), i),r)
+                    self.storageList[1].append(circ)
+        for circ in self.storageList[1]:
+            circ.setFill("black")
+            circ.draw(self.win)
+        for i in range(len(self.synapseConstList)):
+            a=self.synapseConstList[i]
+            pre = a.pre
+            post = a.post
+            preCoords = self.storageList[1][self.storageList[0].index(pre)].getCenter()
+            postCoords = self.storageList[1][self.storageList[0].index(post)].getCenter()
+            l = Line(preCoords,postCoords)
+            if(a.weight<0):
+                l.setFill("blue")
+            else:
+                l.setFill("green")
+            l.draw(self.win)
+        self.win.update()
+
+    def assignLoc(self,count, count1, GraphicObjectType, l, i):
+        """ Precondition
+            (int) x: a nonnegative integer
+            (boolean) GraphicObjectType: is this neuron in a neurongroup
+            returns the desired coordinate point of an object, based on locType
+        """
+        if(self.locType=="linearRandom"):
+            x = count*0.3
+            y=self.h*random.random()
+        elif(self.locType=="random"):
+            x=self.l*random.random()/12
+            y=self.h*random.random()/1.2
+        elif(self.locType=="sinusoidal"):
+            x = count*0.3
+            y=-1*self.h*math.cos(x)+self.h
+        else:
+            x = count1*10
+            if GraphicObjectType==2:
+                y=self.h/l*i
+            elif(GraphicObjectType==0):
+                y=self.h*random.random()        
+        return Point(x*10+20,y+20)
+
+    def main(self):
+        """ runs a loop through all instants of tau """
+        self.makeG()
+        for currentTau in range(0,self.finalTau):
+            print(currentTau)
+            firedNeurons = super(GraphicSimulator, self).runOneTimeStep(currentTau)
+
+            for i,neuronToCheck in enumerate(self.neuronCheckList):
+                hasAP = firedNeurons[i]
+                c = self.storageList[1][self.storageList[0].index(neuronToCheck)]
+                if hasAP and (self.previousNeuronStatusList[i]==False):
+                    c.setFill("red")
+                    c.setOutline("red")
+                    self.previousNeuronStatusList[i]=True
+                elif self.previousNeuronStatusList[i]:
+                    c.setFill("black")
+                    c.setOutline("black")
+                    self.previousNeuronStatusList[i]=False
+                self.win.update()
+            time.sleep(self.tau)
+
+
+class HebbianSynapse(Synapse):
+    def __init__(self, neuron1, neuron2, weight=1, adelay=1, aHebbianConstant=0.1):
+        super(HebbianSynapse, self).__init__(neuron1, neuron2, weight, adelay)
+        self.changeConstant=aHebbianConstant
+
+    def fire(self):
+        """ fires the synapse, which affects post's voltage """
+        self.post.addVoltage(self.weight)
+        xpost=self.post.voltage if self.post.voltage>=self.post.threshold else 0 #Implements linear threshold
+        #Note that it is important that the hebbian synapses are evaluated after all other synapses.
+        self.weight=self.weight+(self.changeConstant*xpost)
+
+import numpy as np
+#if __name__=='__main__':
     #create graphics simulator for 120 seconds, timestep=0.1 seconds
-    sim = GraphicSimulator(t=0.1, finalT=120)
+    #sim = Simulator(t= 0, finalT= 10000)
+sim = GraphicSimulator(t= 0.1, finalT= 100)
+
+def NDC(a,x0,x):
+    if a- abs(x-x0)/3>0:
+       return a- abs(x-x0)/3
+    return 0
+
+def P1I(x):
+    return NDC(30,-135,x)
+def P2I(x):
+    return NDC(30,-45,x)
+def P3I(x):
+    return NDC(30,45,x)
+def P4I(x):
+    return NDC(30,135,x)
+
+#Qb:
+inAngle=10 #insert true angle here
+#each neurons' output:
+print(P1I(inAngle))
+print(P2I(inAngle))
+print(P3I(inAngle))
+print(P4I(inAngle))
+#building each neuron's vector
+vn135= np.array([P1I(inAngle)*math.cos(math.radians(-135)),\
+                 P1I(inAngle)*math.sin(math.radians(-135))])
+vn45= np.array([P2I(inAngle)*math.cos(math.radians(-45)),\
+                 P2I(inAngle)*math.sin(math.radians(-45))])
+v45= np.array([P3I(inAngle)*math.cos(math.radians(45)),\
+                 P3I(inAngle)*math.sin(math.radians(45))])
+v135= np.array([P4I(inAngle)*math.cos(math.radians(135)),\
+                 P4I(inAngle)*math.sin(math.radians(135))])
+final=vn135+vn45+v45+v135
+length=((final[0]**2) + (final[1]**2))**0.5
+angle=math.degrees(np.arctan2(final[1],final[0]))
+print("accuracy% ",100*length/30)#represents length of the final vector in percent
+print("population vector direction ",angle)#represents the final direction the pop vector points in
+
+#Qc:
+#make the 4 sensory neurons
+P1=Neuron()
+P2=Neuron()
+P3=Neuron()
+P4=Neuron()
+sim.addNeuron(P1)
+sim.addNeuron(P2)
+sim.addNeuron(P3)
+sim.addNeuron(P4)
+NP=MCPNeuron()
+reward=Neuron()
+sim.addNeuron(NP)
+sim.addNeuron(reward)
+
+sim.addSynapse(Synapse(reward,NP))
+
+sim.addSynapse(HebbianSynapse(P1,NP))
+sim.addSynapse(HebbianSynapse(P2,NP))
+sim.addSynapse(HebbianSynapse(P3,NP))
+sim.addSynapse(HebbianSynapse(P4,NP))
+
+sim.main()
+
+
+def projection (input_angle, constant_angle, h):
+    if h-abs(input_angle - constant_angle)>0:
+        return h-abs(input_angle - constant_angle)
+    return 0
+
+input_angle= 89
+
+input1= projection(input_angle, 45, 100)
+input2= projection(input_angle, 135, 100)
+input3= projection(input_angle, -45, 100)
+input4= projection(input_angle, -135, 100)
+
+P1 = Neuron()
+P2 = Neuron()
+P3 = Neuron()
+P4 = Neuron()
+
+sim = Simulator(0.1,120)
+NP = Neuron(athreshold=0.5)
+
+HS1= HebbianSynapse(P1,NP)
+HS2= HebbianSynapse(P2,NP)
+HS3= HebbianSynapse(P3,NP)
+HS4= HebbianSynapse(P4,NP)
+
+neuron_list= [P1,P2,P3,P4,NP]
+synapse_list = [HS1, HS2, HS3, HS4]
+          
+
+for i in range(len(neuron_list)):
+    sim.addNeuron(neuron_list[i])
+for i in range(len(synapse_list)):
+    sim.addSynapse(synapse_list[i])
+
+
+sim.main()
     
-    #create a single Neuron that will receive all inputs, and add it to simulator
-    inputNeuron = Neuron(aname="inputNeuron")
-    sim.addNeuron(inputNeuron)
-    
-    #create list of 10 LIF Neurons linked to inputNeuron, and list of 10 MCP
-    #Neurons linked to LIF Neurons
-    Alist = []
-    Blist = []
-    for i in range(10):
-        Alist.append(LIFNeuron(adecay=5, aname="LIF Neuron "+str(i)))
-        Blist.append(MCPNeuron(aname="MCP Neuron "+str(i)))
-    #add Neurons to Simulator
-    sim.addNeuronList(Alist)
-    sim.addNeuronList(Blist)
-    #add Synapses weighted by distance between inputNeuron and Alist, and between
-    #Alist and Blist, and add them to simulator
-    synapseList = Synapse.connectWeightedByDistance([inputNeuron], Alist, 1, 50, 40)
-    for i in range(len(synapseList)):
-        sim.addSynapse(synapseList[i])
-    synapseList = Synapse.connectWeightedByDistance(Alist, Blist, 6, -3, 1)
-    for i in range(len(synapseList)):
-        sim.addSynapse(synapseList[i])
-    
-    #add input voltage to inputNeuron at 5, 20, 40, 60 and 80 seconds
-    sim.appendInput(5, inputNeuron, 1)
-    sim.appendInput(20, inputNeuron, 1)
-    sim.appendInput(40, inputNeuron, 1)
-    sim.appendInput(60, inputNeuron, 3)
-    sim.appendInput(80, inputNeuron, 1)
-    
-    #run simulation
-    sim.main()
-    
-    #plot voltage history and spike times of each neuron in Alist
-    for i in range(10):
-        Alist[i].plotVoltage()
-        Alist[i].plotSpikes()
-    
-    #print weights of synapses from inputNeuron to Alist
-    for i in range(len(inputNeuron.postSynapses)):
-        print("synaptic weight of neuron " + str(i) + ": "+ str(inputNeuron.postSynapses[i].weight))
-    
-    #print raster plots of Alist and Blist
-    sim.rasterPlot(Alist)
-    sim.rasterPlot(Blist)
+x=neuron_list[4].plotVoltage()
+xS=neuron_list[4].plotSpikes()
+print("length", len(xS), xS)
+
+#print raster plots of Alist and Blist
+sim.rasterPlot(neuron_list)
+

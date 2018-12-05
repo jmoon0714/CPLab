@@ -2,7 +2,7 @@
 import random
 from graphics import *
 import matplotlib
-import numpy
+import numpy as np
 import time
 import math
 
@@ -80,7 +80,7 @@ class Neuron(object):
                 self.AP()
                 self.voltage -= abs(self.threshold)
                 self.refractCount = self.refractory
-                print("AP at "+ str(currentTau) + " at " + self.name)
+                #print("AP at "+ str(currentTau) + " at " + self.name)
                 return True
         return False
     
@@ -210,7 +210,13 @@ class Synapse(object):
             self.fire()
             count += 1
         self.activateFireDelays = self.activateFireDelays[count:]
+        
+    def changeWeights(self):
+        0
             
+    def plotWeight(self):
+        0
+        
     @classmethod
     def connect(cls, Alist, Blist, weight=1, d=1):
         synapseList = []
@@ -297,7 +303,7 @@ class Simulator(object):
     def main(self, useDelay = False):
         """ runs a loop through all instants of tau """
         for currentTau in range(0,self.finalTau):
-            print(currentTau)
+            #print(currentTau)
             self.runOneTimeStep(currentTau)
             if useDelay:
                 time.sleep(self.tau)
@@ -313,6 +319,9 @@ class Simulator(object):
         
         for synapseToCheck in self.synapseCheckList:
             synapseToCheck.check(currentTau)
+        
+        for synapseWeightToChange in self.synapseCheckList:
+            synapseWeightToChange.changeWeights()
         
         firedNeurons = []
         for neuronToCheck in self.neuronCheckList:
@@ -361,7 +370,10 @@ class GraphicSimulator(Simulator):
         self.storageList.append([])
         self.synapseConstList=[]
         self.locType=locType
-		self.previousNeuronStatusList=[]
+        
+        #changed here
+        self.previousNeuronStatusList=[]
+        
         super(GraphicSimulator, self).__init__(t,finalT)
         
     def addNeuron(self, aNeuron):
@@ -385,9 +397,11 @@ class GraphicSimulator(Simulator):
         """
         count = 0
         count1 = 0
+        
+        #changed here
+        self.previousNeuronStatusList=[False for i in range(len(self.neuronCheckList))]
+        
         self.win=GraphWin("Neurons",self.l,self.h,autoflush=False)
-		
-		self.previousNeuronStatusList=[False for i in range(len(self.neuronCheckList))]
 
         for ob in self.constructList:
             if ob not in self.storageList[0]:
@@ -468,52 +482,175 @@ class GraphicSimulator(Simulator):
                 self.win.update()
             time.sleep(self.tau)
         
-if __name__=='__main__':
-    #create graphics simulator for 120 seconds, timestep=0.1 seconds
-    sim = GraphicSimulator(t=0.1, finalT=120)
+
+class HebbianSynapse(Synapse):
+    def __init__(self, neuron1, neuron2, weight=1, adelay=1, aHebbianConstant=0.05, aCooincidence=3):
+        super(HebbianSynapse, self).__init__(neuron1, neuron2, weight, adelay)
+        self.changeConstant=aHebbianConstant
+        self.weightData=[]
+        self.weightData.append(self.weight)
+        self.CDT=aCooincidence
+        
+    def changeWeights(self):
+        #xpost=self.post.voltageHistory[len(self.post.voltageHistory)-1] if (self.post.voltageHistory[len(self.post.voltageHistory)-1] >=self.post.threshold) else 0
+        #Implements linear threshold
+        #xprev=self.pre.voltageHistory[len(self.pre.voltageHistory)-1] if (self.pre.voltageHistory[len(self.pre.voltageHistory)-1] >=self.pre.threshold) else 0
+        #Note that it is important that the hebbian synapses are evaluated after all other synapses.
+        xpost=0
+        for i in range(self.CDT):
+            if (self.post.voltageHistory[max(len(self.post.voltageHistory)-1-i,0)] >=self.post.threshold) :
+                xpost=1
+                break
+            
+        xprev=0
+        for i in range(self.CDT):
+            if (self.pre.voltageHistory[max(len(self.pre.voltageHistory)-1-i,0)] >=self.pre.threshold) :
+                xprev=1
+                break
+            
+        self.weight=self.weight+(self.changeConstant*(xpost)*(xprev))
+        if self.weight>= 2: # weight boundry
+            self.weight=2
+        self.weightData.append(self.weight)
+        
+    def fire(self):
+        """ fires the synapse, which affects post's voltage """
+        pre= max(self.pre.voltageHistory[len(self.pre.voltageHistory)-1]-self.pre.threshold,0)
+        self.post.addVoltage(self.weight*pre)
+        
+    def plotWeight(self):
+        """ using matplotlib.pyplot.plot, plots voltage verses time graph"""
+        matplotlib.pyplot.plot(self.weightData)
+        matplotlib.pyplot.xlabel("time")
+        matplotlib.pyplot.ylabel("weight")
+        matplotlib.pyplot.title("weight/time graph of synapse ")
+        matplotlib.pyplot.show()
+        
+class STDPSynapse(Synapse):
+    def __init__(self, neuron1, neuron2, weight=1, adelay=1):
+        super(STDPSynapse, self).__init__(neuron1, neuron2, weight, adelay)
+        self.weightData=[]
+        self.weightData.append(self.weight)
+        self.negCount=0
+        self.posCount=0
+        
+    def changeWeights(self):
+        if(self.post.voltageHistory[len(self.post.voltageHistory)-1] >=self.post.threshold) and\
+            (self.pre.voltageHistory[len(self.pre.voltageHistory)-1] >=self.pre.threshold): 
+                1
+        
+        elif (self.pre.voltageHistory[len(self.pre.voltageHistory)-1] >=self.pre.threshold) :
+            #If pre fired checki f post fired before it
+            for tp in range(20):
+                if (self.post.voltageHistory[max(len(self.post.voltageHistory)-1-tp,0)] >=self.post.threshold) :
+                    self.negCount=self.negCount+1
+                    if tp<=5:
+                        self.weight=self.weight/1.4
+                    elif tp<=10:
+                        self.weight=self.weight/1.2
+                    else:
+                        self.weight=self.weight/1.1
+                    break
+        elif (self.post.voltageHistory[len(self.post.voltageHistory)-1] >=self.post.threshold) :
+            #If post fired check if pre was "responsible"
+            for tp in range(20):
+                if (self.pre.voltageHistory[max(len(self.pre.voltageHistory)-1-tp,0)] >=self.pre.threshold) :
+                    self.posCount=self.posCount+1
+                    if tp<=5:
+                        self.weight=1.4*self.weight
+                    elif tp<=10:
+                        self.weight=1.2*self.weight
+                    else:
+                        self.weight=1.1*self.weight
+                    break
+        self.weightData.append(self.weight)
+        
+    def fire(self):
+        """ fires the synapse, which affects post's voltage """
+        pre= self.pre.voltageHistory[len(self.pre.voltageHistory)-1]
+        
+        self.post.addVoltage(self.weight*pre)
+        
+    def plotWeight(self):
+        """ using matplotlib.pyplot.plot, plots voltage verses time graph"""
+        matplotlib.pyplot.plot(self.weightData)
+        matplotlib.pyplot.xlabel("time")
+        matplotlib.pyplot.ylabel("weight")
+        matplotlib.pyplot.title("weight/time graph of synapse ")
+        matplotlib.pyplot.show()
+        
+class RandomNeuron(Neuron):
     
-    #create a single Neuron that will receive all inputs, and add it to simulator
-    inputNeuron = Neuron(aname="inputNeuron")
-    sim.addNeuron(inputNeuron)
+    def __init__(self, avoltage=0, athreshold=1, arefractory=1, arate=120, aname=""): 
+        """ Precondition:
+        "avoltage": see Neuron documentation
+        "athreshold": see Neuron documentation
+        "arefractory": see Neuron documentation
+        "adecay": controls rate of leakiness, default initialized to 5
+        "aname": see Neuron documentation
+        """
+        super(RandomNeuron, self).__init__(avoltage=avoltage, athreshold=athreshold,\
+             arefractory=arefractory, aname=aname)
+        self.rateConstant= arate
+        
+    def check(self, currentTau):
+        """ called by simulator
+        adds all the previously incoming inputs
+        if voltage>=threshold calls AP(), reduces the voltage by threshold, returns True
+        else returns False
+        """
+        self.voltage += self.sumInputs
+        self.sumInputs = 0
+        self.refractCount -= 1
+        self.voltageHistory.append(self.voltage)
+        if(self.refractCount <= 0):
+            self.refractCount = 0 
+            if(self.voltage >= self.threshold or random.random()*1000<self.rateConstant):
+                self.spikeTimes.append(currentTau)
+                #self.AP()
+                self.voltage = 0
+                self.refractCount = self.refractory
+                self.voltageHistory[len(self.voltageHistory)-1] = self.voltageHistory[len(self.voltageHistory)-1] +1
+                #print("AP at "+ str(currentTau) + " at " + self.name)
+                return True
+        return False
+        
+class competitiveInhibitor(Neuron):
+    def __init__(self, avoltage=0, aname=""):
+        """ Precondition:
+        "avoltage": see Neuron documentation
+        "athreshold": see Neuron documentation
+        "arefractory": see Neuron documentation
+        "aname": see Neuron documentation
+        """
+        super(competitiveInhibitor, self).__init__(avoltage=avoltage\
+             , aname=aname)
+        
+    def addVoltage(self, aSum):
+        """ Precondition:
+            "v": adds "v" to sumInputs.
+        """
+        0
+        
+    def check(self, currentTau):
+        """ forces all presynaptic neurons to have no inputs
+        except the one with the highest input
+        """
+        voltages=[]
+        for i in self.preSynapses:
+            voltages.append(i.pre.sumInputs)
+        #print(voltages)
+        m=max(voltages)
+        if m==0:
+            return
+        
+        for i in range(len(voltages)):
+            voltages[i]-=m
+        for i in range(len(voltages)):
+            if voltages[i]<0:
+                self.preSynapses[i].pre.sumInputs=0
+            else:
+                self.preSynapses[i].pre.sumInputs=max(self.preSynapses[i].pre.sumInputs\
+                                ,self.preSynapses[i].pre.threshold)
+        
     
-    #create list of 10 LIF Neurons linked to inputNeuron, and list of 10 MCP
-    #Neurons linked to LIF Neurons
-    Alist = []
-    Blist = []
-    for i in range(10):
-        Alist.append(LIFNeuron(adecay=5, aname="LIF Neuron "+str(i)))
-        Blist.append(MCPNeuron(aname="MCP Neuron "+str(i)))
-    #add Neurons to Simulator
-    sim.addNeuronList(Alist)
-    sim.addNeuronList(Blist)
-    #add Synapses weighted by distance between inputNeuron and Alist, and between
-    #Alist and Blist, and add them to simulator
-    synapseList = Synapse.connectWeightedByDistance([inputNeuron], Alist, 1, 50, 40)
-    for i in range(len(synapseList)):
-        sim.addSynapse(synapseList[i])
-    synapseList = Synapse.connectWeightedByDistance(Alist, Blist, 6, -3, 1)
-    for i in range(len(synapseList)):
-        sim.addSynapse(synapseList[i])
-    
-    #add input voltage to inputNeuron at 5, 20, 40, 60 and 80 seconds
-    sim.appendInput(5, inputNeuron, 1)
-    sim.appendInput(20, inputNeuron, 1)
-    sim.appendInput(40, inputNeuron, 1)
-    sim.appendInput(60, inputNeuron, 3)
-    sim.appendInput(80, inputNeuron, 1)
-    
-    #run simulation
-    sim.main()
-    
-    #plot voltage history and spike times of each neuron in Alist
-    for i in range(10):
-        Alist[i].plotVoltage()
-        Alist[i].plotSpikes()
-    
-    #print weights of synapses from inputNeuron to Alist
-    for i in range(len(inputNeuron.postSynapses)):
-        print("synaptic weight of neuron " + str(i) + ": "+ str(inputNeuron.postSynapses[i].weight))
-    
-    #print raster plots of Alist and Blist
-    sim.rasterPlot(Alist)
-    sim.rasterPlot(Blist)
