@@ -291,9 +291,7 @@ class Simulator(object):
         self.neuronHistory=[]
         self.tau=t
         self.finalTau=finalT
-        self.inputArray= []      
-        self.neuronHistory= []
-        self.synapseHistory=[]
+        self.inputArray= []
         
     def addNeuron(self, aNeuron):
         self.neuronCheckList.append(aNeuron)
@@ -309,10 +307,11 @@ class Simulator(object):
         self.clearHistory()
         
     def clearHistory(self):
-        for neuron in self.neuronHistory:
-            neuron.voltageHistory = []
+        for neuron in self.neuronChecklist:
+            neuron.voltageHistory = neuron.voltageHistory[0]
+            neuron.voltage= neuro
             neuron.spikeTimes = []
-        for synapse in self.synapseHistory:
+        for synapse in self.synapseC:
             synapse.activateFireDelays= []
         
     def addSynapse(self, aSynapse):
@@ -347,6 +346,7 @@ class Simulator(object):
         
         for synapseToCheck in self.synapseCheckList:
             synapseToCheck.check(currentTau)
+            self.synapseHistory.append(synapseToCheck)
         
         for synapseWeightToChange in self.synapseCheckList:
             synapseWeightToChange.changeWeights()
