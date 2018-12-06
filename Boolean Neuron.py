@@ -10,6 +10,8 @@ import Neuron as neuro
 class Gate(object):
     def __init__ (self, weight=1): 
         self.weight= weight
+        self.neuron_list=[]
+        self.synapse_list=[]
     
     def get_out(self):
         raise Exception("NotImplementedException")
@@ -52,6 +54,7 @@ class OrGate(Gate):
         self.N2= neuro.MCPNeuron()
         self.N3= neuro.MCPNeuron()
         self.neuron_list= [self.N1, self.N2, self.N3]
+
         self.S3_1= neuro.Synapse(self.N1, self.N3, self.weight)
         self.S3_2= neuro.Synapse(self.N2, self.N3, self.weight)
         
@@ -76,6 +79,7 @@ class NotGate(Gate):
         self.N1= neuro.MCPNeuron()
         self.N2= neuro.MCPNeuron(athreshold=0)
         self.neuron_list= [self.N1, self.N2]
+
         self.S2_1= neuro.Synapse(self.N1, self.N2, self.weight*-1)
         self.synapse_list= [self.S2_1]
         
@@ -170,8 +174,8 @@ class S_bar_R_bar_latch (object):
         self.not_gate_1= NotGate()
         self.not_gate_2= NotGate()
 
-        self.neurons=[]
-        self.synapses=[]
+        self.neuron_list=[]
+        self.synapse_list=[]
 
         self.not_gate_1.connect_in(self.and_gate_1.get_out())
         self.not_gate_2.connect_in(self.and_gate_2.get_out())
@@ -189,13 +193,13 @@ class S_bar_R_bar_latch (object):
     def get_neurons(self):
         for gate in self.gates:
             for neuron in gate.get_neurons():
-                self.neurons.append(neuron)
-        return self.neurons
+                self.neuron_list.append(neuron)
+        return self.neuron_list
     def get_synapses(self):
         for gate in self.gates:
             for synapse in gate.get_synapses():
-                self.synapses.append(synapse)
-        return self.synapses
+                self.synapse_list.append(synapse)
+        return self.synapse_list
 
     def get_out(self):
         return self.not_gate_1.get_out()
@@ -289,10 +293,64 @@ class one_bit_adder(object):
                 self.synapse_list.append(synapse)
         return self.synapse_list
 
-    def get_out(self):
-        return [self.xor_gate_2.get_out(), self.or_gate_2.get_out()]
+    def get_Sout(self):
+        return self.xor_gate_2.get_out()
+    def get_Cout(self):
+        return self.or_gate_2.get_out()
 
-sim= neuro.Simulator(t=1, finalT=800)
+class n_bit_adder (object):
+    def __init__(self, n=4):
+        self.adders= []
+
+        self.neuron_list=[]
+        self.synapse_list=[]
+
+        for i in range(n):
+            self.adders= self.adders+[one_bit_adder()]
+        
+    def connect_As(self, N_As):
+        if (len(self.adders)!=len(N_As)):
+            raise Exception("Nonmatching length between the number of one-bit adders and the number of input A neurons.")
+        for N_A, adder in zip(N_As, self.adders):
+            adder.connect_A(N_A)
+
+    def connect_Bs(self, N_Bs):
+        if (len(self.adders)!=len(N_Bs)):
+            raise Exception("Nonmatching length between the number of one-bit adders and the number of input B neurons.")
+        for N_B, adder in zip(N_Bs, self.adders):
+            adder.connect_B(N_B)
+    
+    def connect_Cin(self, N_Cin):
+        self.adders[0].connect_Cin(N_Cin)
+        previous_adder= self.adders[0]
+        for adder in self.adders[1::]:
+            adder.connect_Cin(previous_adder.get_Cout())
+            previous_adder=adder
+
+    def get_neurons(self):
+        for adder in self.adders:
+            for neuron in adder.get_neurons():
+                self.neuron_list.append(neuron)
+        return self.neuron_list
+    
+    def get_synapses(self):
+        for gate in self.adders:
+            for synapse in gate.get_synapses():
+                self.synapse_list.append(synapse)
+        return self.synapse_list
+
+    def get_Sout(self):
+        N_Ys= []
+        for adder in self.adders:
+            N_Ys= N_Ys+[adder.get_Sout()]
+        return N_Ys
+    
+    def get_Cout(self):
+        return self.adders[len(self.adders)-1].get_Cout()
+
+
+sim_final_tau= 800
+sim= neuro.Simulator(t=1, finalT=sim_final_tau)
 
 # AND GATE
 A= neuro.MCPNeuron()
@@ -520,4 +578,48 @@ sim.applyConstantInput(B, 1, 800, 700)
 sim.applyConstantInput(C, 1, 800, 700)
 sim.main()
 
-sim.rasterPlot([A, B, C] + adder.get_out())
+sim.rasterPlot([A, B, C] + [adder.get_Sout()]+[adder.get_Cout()])
+
+sim.clear()
+
+# 8 Bit Adder 
+n=8
+N_As= []
+N_Bs= []
+for Nin in range(n):
+    N_As.append(neuro.MCPNeuron())
+    N_Bs.append(neuro.MCPNeuron())
+
+N_Cin= neuro.MCPNeuron()
+
+neurons= N_As+N_Bs+[N_Cin]
+
+byte_adder = n_bit_adder(n)
+byte_adder.connect_As(N_As)
+byte_adder.connect_Bs(N_Bs)
+byte_adder.connect_Cin(N_Cin)
+
+sim.addNeurons(byte_adder.get_neurons())
+sim.addSynapses(byte_adder.get_synapses())
+sim.addNeurons(neurons)
+
+sim.applyConstantInput(N_Cin, 0, sim_final_tau, 0)
+
+#8'b00101101+8'b01010111= 45+87= 8'b10000100= 132
+A= [0,0,1,0,1,1,0,1][::-1]
+B= [0,1,0,1,0,1,1,1][::-1]
+for N_A, a in zip(N_As,A):
+    sim.applyConstantInput(N_A, a, 300,0)
+
+for N_B, b in zip(N_Bs,B):
+    sim.applyConstantInput(N_B, b, 300,0)
+
+sim.main()
+
+#8'b10000100= 132
+out_neurons= byte_adder.get_Sout()+[byte_adder.get_Cout()]
+
+sim.rasterPlot(neurons)
+sim.rasterPlot(out_neurons)
+
+

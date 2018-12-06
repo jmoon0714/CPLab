@@ -5,8 +5,7 @@ import matplotlib
 import numpy as np
 import time
 import math
-
-#%%
+    
 class Neuron(object):
 
     """ Class Invariant: 
