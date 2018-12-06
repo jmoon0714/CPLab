@@ -330,7 +330,12 @@ class Simulator(object):
         """
         self.inputArray.append([aTime, aNeuron, aVoltage])
         self.inputArray.sort(key = lambda x: x[0])
-
+    
+    def applyConstantInput(self, aNeuron, aVoltage, end, start= 0):
+        e= min(end,self.finalTau)
+        for i in range(start,e):
+            self.appendInput(i, aNeuron, aVoltage)
+            
     def main(self, useDelay = False):
         """ runs a loop through all instants of tau """
         for currentTau in range(0,self.finalTau):
