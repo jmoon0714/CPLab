@@ -5,7 +5,7 @@ import matplotlib
 import numpy as np
 import time
 import math
-    
+
 class Neuron(object):
 
     """ Class Invariant: 
@@ -35,7 +35,7 @@ class Neuron(object):
                 "preSynapses," which store instances of Synapse, representing 
                 the synapses on the axon and dendrites of this neuron.
             
-            4) Each neuron has lists spikeTimes and voltageHistory; the former 
+            3) Each neuron has lists spikeTimes and voltageHistory; the former 
                 tracks the voltage over time, and the latter tracks the spikes over time.
         """
         self.threshold = athreshold
@@ -215,7 +215,7 @@ class Synapse(object):
             count += 1
         self.activateFireDelays = self.activateFireDelays[count:]
         
-    def changeWeights(self):
+    def changeWeight(self):
         self.weightData.append(self.weight)
             
     def plotWeight(self):
@@ -356,7 +356,7 @@ class Simulator(object):
             synapseToCheck.check(currentTau)
         
         for synapseWeightToChange in self.synapseCheckList:
-            synapseWeightToChange.changeWeights()
+            synapseWeightToChange.changeWeight()
         
         firedNeurons = []
         for neuronToCheck in self.neuronCheckList:
@@ -376,7 +376,7 @@ class Simulator(object):
             yLoc += 1
         matplotlib.pyplot.plot(xLocs,yLocs,'r.')
         matplotlib.pyplot.axis([0, self.finalTau, 0, yLoc])
-        matplotlib.pyplot.xlabel("Time (tau)")
+        matplotlib.pyplot.xlabel("Time (tau = " + str(self.tau) + ")")
         matplotlib.pyplot.ylabel("Neurons (index)")
         matplotlib.pyplot.title("Raster Plot")
         matplotlib.pyplot.show()
@@ -683,8 +683,3 @@ class competitiveInhibitor(Neuron):
             else:
                 self.preSynapses[i].pre.sumInputs=max(self.preSynapses[i].pre.sumInputs\
                                 ,self.preSynapses[i].pre.threshold)
-    
-
-
-        
-        
