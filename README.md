@@ -1,2 +1,4 @@
 # CPLab
-This is a repositiory of some tools for those in PSYCH 3330 who want to code some more.
+This is a library of tools for neural simulation. Please refer to the following link for documentation.
+
+https://docs.google.com/document/d/16A70rYhTpUS0Ci2NCQkjv8Elo1pwovoySXtOOyHaxjc/edit#
